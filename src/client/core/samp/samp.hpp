@@ -15,7 +15,7 @@ public:
     Samp& operator=(const Samp&) = delete;
 
     bool Initialize();
-    void SetControlsLocked(bool locked);
+    // void SetControlsLocked(bool locked);
 
     void* GetOriginal(const char* name) const;
     void DisableHook(const char* name);

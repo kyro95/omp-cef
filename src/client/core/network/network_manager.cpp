@@ -394,10 +394,7 @@ void NetworkManager::SendRaw(const char* data, int size) {
 	socket_.async_send_to(
 		asio::buffer(*buffer), server_endpoint_,
 		[this, buffer, size](std::error_code ec, std::size_t) {
-			if (!ec) {
-				LOG_DEBUG("[CLIENT] Sent {} raw bytes to server.", size);
-			}
-			else {
+			if (ec) {
 				LOG_ERROR("[CLIENT] UDP send error: {}", ec.message());
 			}
 		}

@@ -1,7 +1,6 @@
 #include "samp.hpp"
 
 #include "common.hpp"
-#include "hooks/d3ddevice9.hpp"
 #include "hooks/hook_manager.hpp"
 #include "samp/addresses.hpp"
 #include "samp/components/game.hpp"
@@ -38,12 +37,13 @@ void* Samp::GetOriginal(const char* name) const
 {
     return hooks_.GetOriginal(name);
 }
+
 void Samp::DisableHook(const char* name)
 {
     hooks_.Disable(name);
 }
 
-void Samp::SetControlsLocked(bool locked)
+/*void Samp::SetControlsLocked(bool locked)
 {
     if (auto* game = GetComponent<GameComponent>())
     {
@@ -60,7 +60,7 @@ void Samp::SetControlsLocked(bool locked)
             game->SetCursorMode(CMODE_NONE, TRUE);
         }
     }
-}
+}*/
 
 void __declspec(naked) Samp::SampInitializationHook() noexcept
 {
