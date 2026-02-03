@@ -6,6 +6,7 @@
 #include "browser/audio.hpp"
 #include "browser/focus.hpp"
 #include "browser/manager.hpp"
+#include "hooks/cursor_hook.hpp"
 #include "hooks/hook_manager.hpp"
 #include "hooks/render_hook.hpp"
 #include "hooks/wndproc.hpp"
@@ -85,6 +86,8 @@ bool Runtime::Start()
 		return true;
 	}
 
+	CursorHook::Instance().Initialize(*hooks_);
+
 	RenderManager::Instance().SetHookManager(hooks_.get());
 	if (!RenderManager::Instance().Initialize())
 	{
@@ -107,6 +110,8 @@ bool Runtime::Start()
 
 	wndproc_->OnMessage = [this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT
 	{
+		RenderManager::Instance().PollD3D();
+
 		if (browser_ && browser_->OnWndProcMessage(hwnd, msg, wParam, lParam))
 			return TRUE;
 
@@ -131,6 +136,7 @@ bool Runtime::Start()
 	samp_ = std::make_unique<Samp>(*hooks_);
 	samp_->OnLoaded = [this]()
 	{
+		RenderManager::Instance().PollD3D();
 		renderhook_ = std::make_unique<RenderHook>(*hooks_, *browser_);
 		if (!renderhook_->Initialize())
 		{
@@ -208,6 +214,7 @@ void Runtime::Stop()
         wndproc_.reset();
     }
 
+	CursorHook::Instance().Shutdown(*hooks_);
     RenderManager::Instance().Shutdown();
 
     if (hooks_)

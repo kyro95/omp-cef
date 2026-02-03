@@ -20,6 +20,7 @@ class DownloadDialog;
 
 class HookManager;
 class WndProcHook;
+class CursorHook;
 class RenderHook;
 
 class SampVersionManager;
