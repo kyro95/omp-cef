@@ -1,4 +1,24 @@
 
+## [1.0.4](https://github.com/aurora-mp/omp-cef/compare/v1.0.3..v1.0.4) (2026-02-03)
+
+### 🧹 Chore
+
+- *(client)* Add version to log - ([cbe70a0](https://github.com/aurora-mp/omp-cef/commit/cbe70a0af79550094f7102cab9639a747ef4e25a))
+- *(tests)* Add very basic login example for omp & samp - ([51d7e69](https://github.com/aurora-mp/omp-cef/commit/51d7e69e9f267c325c275663018ace003d015f30))
+- *(tests)* Add react webview for tests - ([cac89fa](https://github.com/aurora-mp/omp-cef/commit/cac89fa77fc10d871dad4a91ab2a08783509d14e))
+
+### 🐛 Bug Fixes
+
+- *(client)* Fix CEF OSR lag: queue OnPaint frames in CPU and upload textures on D3D thread during RenderAll - ([e0ddcfe](https://github.com/aurora-mp/omp-cef/commit/e0ddcfe421e6f9c4b48484d5c95c38f3842dfd7e))
+- *(client)* Fix CEF OSR lag: queue OnPaint frames in CPU and upload textures on D3D thread during RenderAll - ([e0ddcfe](https://github.com/aurora-mp/omp-cef/commit/e0ddcfe421e6f9c4b48484d5c95c38f3842dfd7e))
+- *(client)* Fix CEF OSR lag: queue OnPaint frames in CPU and upload textures on D3D thread during RenderAll - ([e0ddcfe](https://github.com/aurora-mp/omp-cef/commit/e0ddcfe421e6f9c4b48484d5c95c38f3842dfd7e))
+- *(client)* Fix CEF OSR lag: queue OnPaint frames in CPU and upload textures on D3D thread during RenderAll - ([e0ddcfe](https://github.com/aurora-mp/omp-cef/commit/e0ddcfe421e6f9c4b48484d5c95c38f3842dfd7e))
+- *(client)* Fix CEF OSR lag: queue OnPaint frames in CPU and upload textures on D3D thread during RenderAll - ([e0ddcfe](https://github.com/aurora-mp/omp-cef/commit/e0ddcfe421e6f9c4b48484d5c95c38f3842dfd7e))
+
+
+
+
+
 ## [1.0.3](https://github.com/aurora-mp/omp-cef/compare/v1.0.2..v1.0.3) (2026-02-03)
 
 ### 🧹 Chore
