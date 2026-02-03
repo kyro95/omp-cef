@@ -1,4 +1,37 @@
 
+## [1.0.3](https://github.com/aurora-mp/omp-cef/compare/v1.0.2..v1.0.3) (2026-02-03)
+
+### 🧹 Chore
+
+- *(client)* Normalize CefApp switches - ([cd813c7](https://github.com/aurora-mp/omp-cef/commit/cd813c7775efa77af9694618b473b246ce97fc8d))
+- *(client)* Some clean up - ([04b47e1](https://github.com/aurora-mp/omp-cef/commit/04b47e1d6f5176998d6fdc023d7143533568a75f))
+- Add issue template - ([777ed37](https://github.com/aurora-mp/omp-cef/commit/777ed37bca43af6363dc966c8897e29161cbf92d))
+- Update README - ([c4e61b2](https://github.com/aurora-mp/omp-cef/commit/c4e61b24e58cc0e2f06fc1a25a3d521dc3e8dc14))
+- Update cliff (duplications) - ([d3229d4](https://github.com/aurora-mp/omp-cef/commit/d3229d40a7f7c62dfb49d935b410850730ca4db0))
+
+### 🐛 Bug Fixes
+
+- Fix OnCefReady callback not called when no resources need to be downloaded - ([93adc9a](https://github.com/aurora-mp/omp-cef/commit/93adc9ae9899e8613c3883eb994c30b337f28db7))
+
+### ♻️ Refactoring
+
+- *(client)* Replace D3D9 device proxy with vtable hooks + fallback poll - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+- *(client)* Replace D3D9 device proxy with vtable hooks + fallback poll - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+- *(client)* Replace D3D9 device proxy with vtable hooks + fallback poll - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+- *(client)* Replace D3D9 device proxy with vtable hooks + fallback poll - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+- *(client)* Replace D3D9 device proxy with vtable hooks + fallback poll - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+- *(client)* Replace D3D9 device proxy with vtable hooks + fallback poll - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+- *(client)* Replace D3D9 device proxy with vtable hooks + fallback poll - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+- *(client)* Replace D3D9 device proxy with vtable hooks + fallback poll - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+- Replace d3ddevice9 cursor forcing with Win32 SetCursor hook - ([69218f3](https://github.com/aurora-mp/omp-cef/commit/69218f3377411dbdcd6b48176e3dcefdab260b2e))
+- Replace d3ddevice9 cursor forcing with Win32 SetCursor hook - ([69218f3](https://github.com/aurora-mp/omp-cef/commit/69218f3377411dbdcd6b48176e3dcefdab260b2e))
+- Replace d3ddevice9 cursor forcing with Win32 SetCursor hook - ([69218f3](https://github.com/aurora-mp/omp-cef/commit/69218f3377411dbdcd6b48176e3dcefdab260b2e))
+- This should not negatively impact compatibility with other mods, since it reduces the intervention surface - ([30c9a66](https://github.com/aurora-mp/omp-cef/commit/30c9a66ec3ede94d3b6678cf2f86b97fba0353a1))
+
+
+
+
+
 ## [1.0.2](https://github.com/aurora-mp/omp-cef/compare/v1.0.1..v1.0.2) (2026-02-01)
 
 ### 🧹 Chore
