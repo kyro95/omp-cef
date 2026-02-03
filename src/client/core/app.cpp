@@ -5,6 +5,7 @@
 
 #include "shared/events.hpp"
 #include "shared/packet.hpp"
+#include "shared/version.hpp"
 
 #include "browser/manager.hpp"
 #include "browser/audio.hpp"
@@ -57,7 +58,7 @@ static void SendEmitToBrowser(BrowserManager& browserManager, int browserId, con
 
 void App::Initialize()
 {
-    LOG_INFO("Init omp-cef client app ...");
+    LOG_INFO("Init omp-cef client app ... (v{}.{}.{}", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
 
     network_.SetPacketHandler([this](const NetworkPacket& p) {
         OnPacketReceived(p);

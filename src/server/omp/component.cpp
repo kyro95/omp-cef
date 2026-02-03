@@ -4,7 +4,7 @@
 #include <Server/Components/Pawn/Impl/pawn_natives.hpp>
 #include <Server/Components/Pawn/Impl/pawn_impl.hpp>
 
-#include <common/version.hpp>
+#include <shared/version.hpp>
 
 StringView CefOmpComponent::componentName() const
 {

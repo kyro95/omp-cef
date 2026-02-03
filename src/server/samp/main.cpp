@@ -6,7 +6,7 @@
 #include <pawn-natives/NativesMain.hpp>
 #include <common/plugin.hpp>
 #include <common/logger.hpp>
-#include <common/version.hpp>
+#include <shared/version.hpp>
 #include "samp_bridge.hpp"
 #include "config_cfg.hpp"
 
