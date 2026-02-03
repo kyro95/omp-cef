@@ -60,7 +60,7 @@ void DownloadDialog::HideLoader()
 
     if (hud_) {
         hud_->ToggleComponent(EHudComponent::ALL, true);
-        hud_->SetClassSelectionVisible(true);
+        // hud_->SetClassSelectionVisible(true);
     }
 }
 
@@ -154,8 +154,6 @@ void DownloadDialog::Finish()
             self->HideLoader(); 
         }, base::Unretained(this)),
         700);
-
-    network_->SendPacket(PacketType::DownloadComplete, {});
 
     LOG_INFO("[DownloadDialog] Finished.");
 }

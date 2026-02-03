@@ -90,8 +90,8 @@ void App::FlushPendingIfReady()
     if (!flushed_once_)
     {
         flushed_once_ = true;
-        LOG_INFO("[CEF] Resources completed -> flushing pending creates={}, emits={}.",
-            (int)pending_creates_.size(), (int)pending_emits_.size());
+        network_.SendPacket(PacketType::DownloadComplete, {});
+        LOG_INFO("[CEF] Resources completed -> flushing pending creates={}, emits={}.", (int)pending_creates_.size(), (int)pending_emits_.size());
     }
 
     if (!pending_creates_.empty())
