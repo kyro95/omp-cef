@@ -57,6 +57,16 @@ struct BrowserInstance
     explicit BrowserInstance(int id) : id(id), view(id) {}
 };
 
+struct PendingPaint
+{
+    std::mutex mutex;
+    std::vector<uint8_t> pixels;
+    int width = 0;
+    int height = 0;
+    bool ready = false;
+    uint64_t tick = 0;
+};
+
 class BrowserManager
 {
 public:
@@ -162,4 +172,6 @@ private:
     FocusManager* focus_ = nullptr;
 
     std::function<CEntity*(int)> entity_resolver_{};
+
+    std::unordered_map<int, PendingPaint> pending_;
 };

@@ -10,9 +10,10 @@ public:
     {
         command_line->AppendSwitchWithValue("force-device-scale-factor", "1.0");
         command_line->AppendSwitchWithValue("high-dpi-support", "1");
-        command_line->AppendSwitch("enable-begin-frame-scheduling");
         command_line->AppendSwitchWithValue("autoplay-policy", "no-user-gesture-required");
         command_line->AppendSwitchWithValue("allow-browser-signin", "false");
+
+        // TODO: command_line->AppendSwitch("enable-begin-frame-scheduling");
     }
 
 private:

@@ -199,11 +199,8 @@ void App::Tick()
 
     FlushPendingIfReady();
 
-    if (browser_.IsAnyBrowserVisible())
-    {
-        focus_.Update();
-        browser_.RenderAll();
-    }
+    focus_.Update();
+    browser_.RenderAll();
 }
 
 void App::RemovePendingCreate(int id)

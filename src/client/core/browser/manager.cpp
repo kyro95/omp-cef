@@ -815,28 +815,24 @@ void BrowserManager::OnBrowserClosed(int id)
     browsers_.erase(id);
 }
 
-void BrowserManager::OnPaint(int id, const void* buffer, int w, int h)
+void BrowserManager::OnPaint(int id, const void* buffer, int width, int height)
 {
-    if (isCefUpdatesPaused_) 
-    {
-        LOG_DEBUG("[BrowserManager] CEF update paused during device reset, skipping OnPaint for browser {}", id);
+    if (isCefUpdatesPaused_ || !buffer)
         return;
-    }
 
     auto* instance = GetBrowserInstance(id);
-    if (!instance || !buffer)
+    if (!instance)
         return;
 
-    if (instance->mode == RenderMode::WorldObject3D)
+    auto& pending_paint = pending_[id];
     {
-        auto it = worldRenderers_.find(id);
-        if (it != worldRenderers_.end())
-            it->second->OnPaint(buffer, w, h);
-    }
-    else
-    {
-        cef_rect_t rect{0, 0, w, h};
-        instance->view.UpdateTexture((const uint8_t*)buffer, &rect, 1);
+        std::lock_guard<std::mutex> lock(pending_paint.mutex);
+        pending_paint.width = width;
+        pending_paint.height = height;
+        pending_paint.pixels.resize((size_t)width * (size_t)height * 4);
+        std::memcpy(pending_paint.pixels.data(), buffer, pending_paint.pixels.size());
+        pending_paint.ready = true;
+        pending_paint.tick = ::GetTickCount64();
     }
 }
 
@@ -846,6 +842,38 @@ bool BrowserManager::RenderAll()
         return false;
 
     UpdateAudioSpatialization();
+
+    // Flush pending paints (D3D thread)
+    for (auto& [id, inst] : browsers_)
+    {
+        if (!inst) 
+            continue;
+
+        auto it = pending_.find(id);
+        if (it != pending_.end())
+        {
+            auto& pending_paint = it->second;
+            std::lock_guard<std::mutex> lock(pending_paint.mutex);
+
+            if (pending_paint.ready && !pending_paint.pixels.empty())
+            {
+                cef_rect_t rect{0, 0, pending_paint.width, pending_paint.height};
+
+                if (inst->mode == RenderMode::WorldObject3D)
+                {
+                    auto world_renderer = worldRenderers_.find(id);
+                    if (world_renderer != worldRenderers_.end())
+                        world_renderer->second->OnPaint(pending_paint.pixels.data(), pending_paint.width, pending_paint.height);
+                }
+                else
+                {
+                    inst->view.UpdateTexture(pending_paint.pixels.data(), &rect, 1);
+                }
+
+                pending_paint.ready = false;
+            }
+        }
+    }
 
     bool any_visible = false;
     for (auto& [id, browser] : browsers_)
