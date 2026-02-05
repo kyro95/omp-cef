@@ -46,9 +46,16 @@ enum class PacketType : uint8_t
 	ClientEmitEvent,
 };
 
+enum class JoinRejectReason : uint8_t
+{
+	None = 0,
+	VersionMismatch = 1,
+};
+
 struct RequestJoinPacket
 {
-	int playerid;
+	int playerid = -1;
+	uint32_t client_version = 0;
 };
 
 struct HandshakeChallengePacket
@@ -68,6 +75,11 @@ struct JoinResponsePacket
 	bool accepted = false;
 	uint32_t kcp_conv_id;
 	std::string manifest_json;
+
+	uint8_t reject_reason = static_cast<uint8_t>(JoinRejectReason::None);
+	uint32_t server_version = 0;
+	uint32_t client_version = 0;
+	std::string message;
 };
 
 struct ServerConfigPacket

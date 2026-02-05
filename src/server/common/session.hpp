@@ -41,6 +41,7 @@ struct NetworkSession
 	bool handshake_complete = false;
 	bool cef_init_notified = false;
 	bool cef_success = false;
+	std::atomic<bool> cef_init_timer_started{ false };
 
 	std::vector<uint8_t> rx_key;
 	std::vector<uint8_t> tx_key;

@@ -78,8 +78,35 @@ PLUGIN_EXPORT int PLUGIN_CALL AmxUnload(AMX* amx)
     return AMX_ERR_NONE;
 }
 
+
 PLUGIN_EXPORT bool PLUGIN_CALL OnPlayerConnect(int playerid)
 {
 	plugin_->OnPlayerConnect(playerid);
+    return true;
+}
+
+PLUGIN_EXPORT bool PLUGIN_CALL OnPlayerDisconnect(int playerid, int reason)
+{
+    (void)reason;
+    if (plugin_)
+        plugin_->OnPlayerDisconnect(playerid);
+    return true;
+}
+
+// SA-MP doesn't have an "OnPlayerClientInit" callback like open.mp.
+// We use early client lifecycle callbacks (class selection) to start
+// the handshake timeout logic and detect players without the CEF client.
+static inline void MaybeNotifyClientInit(int playerid)
+{
+    if (!plugin_)
+        return;
+
+    plugin_->OnPlayerClientInit(playerid);
+}
+
+PLUGIN_EXPORT bool PLUGIN_CALL OnPlayerRequestClass(int playerid, int classid)
+{
+    (void)classid;
+    MaybeNotifyClientInit(playerid);
     return true;
 }

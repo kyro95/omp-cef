@@ -20,6 +20,7 @@ public:
 
     std::string GetPlayerAddressIp(int playerid) override;
     void KickPlayer(int playerid) override;
+    bool IsPlayerNpcBot(int playerid) override;
 
 private:
     ICore* core_;

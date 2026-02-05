@@ -33,6 +33,16 @@ int NetGameView_R1::GetPort() const
     return -1;
 }
 
+int NetGameView_R1::GetState() const 
+{
+    auto* netGame = GetNetGame();
+    if (netGame) {
+        return netGame->GetState();
+    }
+
+    return -1;
+}
+
 int NetGameView_R1::GetLocalPlayerId() const
 {
     auto* netGame = GetNetGame();

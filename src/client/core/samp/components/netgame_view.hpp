@@ -10,6 +10,7 @@ public:
 	virtual std::string GetIp() const = 0;
 	virtual int GetPort() const = 0;
 
+	virtual int GetState() const = 0;
 	virtual int GetLocalPlayerId() const = 0;
 	virtual std::string GetLocalPlayerName() const = 0;
 

@@ -18,4 +18,5 @@ public:
 
     virtual std::string GetPlayerAddressIp(int playerid) = 0;
     virtual void KickPlayer(int playerid) = 0;
+    virtual bool IsPlayerNpcBot(int playerid) = 0;
 };

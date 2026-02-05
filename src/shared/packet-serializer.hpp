@@ -84,6 +84,7 @@ inline bool SerializePacket(const NetworkPacket& packet, std::string& out)
 
 			if constexpr (std::is_same_v<T, RequestJoinPacket>) {
 				os.write(reinterpret_cast<const char*>(&arg.playerid), sizeof(arg.playerid));
+				os.write(reinterpret_cast<const char*>(&arg.client_version), sizeof(arg.client_version));
 			}
 			else if constexpr (std::is_same_v<T, HandshakeChallengePacket>) {
 				WriteBytes(os, arg.cookie);
@@ -97,6 +98,10 @@ inline bool SerializePacket(const NetworkPacket& packet, std::string& out)
 				os.put(arg.accepted ? 1 : 0);
 				os.write(reinterpret_cast<const char*>(&arg.kcp_conv_id), sizeof(arg.kcp_conv_id));
 				WriteString(os, arg.manifest_json);
+				os.put(static_cast<char>(arg.reject_reason));
+				os.write(reinterpret_cast<const char*>(&arg.server_version), sizeof(arg.server_version));
+				os.write(reinterpret_cast<const char*>(&arg.client_version), sizeof(arg.client_version));
+				WriteString(os, arg.message);
 			}
 			else if constexpr (std::is_same_v<T, ServerConfigPacket>) {
 				WriteBytes(os, arg.master_resource_key);
@@ -133,18 +138,6 @@ inline bool SerializePacket(const NetworkPacket& packet, std::string& out)
 				os.write(reinterpret_cast<const char*>(&arg.totalChunks), sizeof(arg.totalChunks));
 				WriteBytes(os, arg.data);
 			}
-			/*else if constexpr (std::is_same_v<T, DownloadStartedPacket>) {
-				uint16_t count = static_cast<uint16_t>(arg.files_to_download.size());
-				os.write(reinterpret_cast<const char*>(&count), sizeof(count));
-
-				for (const auto& file : arg.files_to_download) {
-					WriteString(os, file.first);
-					os.write(reinterpret_cast<const char*>(&file.second), sizeof(file.second));
-				}
-			}
-			else if constexpr (std::is_same_v<T, DownloadProgressPacket>) {
-				os.write(reinterpret_cast<const char*>(&arg), sizeof(arg));
-			}*/
 			else if constexpr (std::is_same_v<T, EmitEventPacket> || std::is_same_v<T, ClientEmitEventPacket>) {
 				os.write(reinterpret_cast<const char*>(&arg.browserId), sizeof(arg.browserId));
 				WriteString(os, arg.name);
@@ -210,6 +203,15 @@ inline bool DeserializePacket(const char* data, size_t size, NetworkPacket& out)
 			if (!is.good())
 				return false;
 
+			packet.client_version = 0;
+			if (is.rdbuf()->in_avail() >= static_cast<std::streamsize>(sizeof(packet.client_version))) {
+				is.read(reinterpret_cast<char*>(&packet.client_version), sizeof(packet.client_version));
+				if (!is.good()) {
+					packet.client_version = 0;
+					is.clear();
+				}
+			}
+
 			out.payload = packet;
 			break;
 		}
@@ -254,6 +256,34 @@ inline bool DeserializePacket(const char* data, size_t size, NetworkPacket& out)
 
 			if (!ReadString(is, packet.manifest_json))
 				return false;
+
+			packet.reject_reason = static_cast<uint8_t>(JoinRejectReason::None);
+			packet.server_version = 0;
+			packet.client_version = 0;
+			packet.message.clear();
+
+			if (is.rdbuf()->in_avail() > 0) {
+				char buf = 0;
+				is.get(buf);
+
+				if (is.good()) {
+					packet.reject_reason = static_cast<uint8_t>(buf);
+					
+					if (is.rdbuf()->in_avail() >= static_cast<std::streamsize>(sizeof(packet.server_version)))
+						is.read(reinterpret_cast<char*>(&packet.server_version), sizeof(packet.server_version));
+					
+					if (is.rdbuf()->in_avail() >= static_cast<std::streamsize>(sizeof(packet.client_version)))
+						is.read(reinterpret_cast<char*>(&packet.client_version), sizeof(packet.client_version));
+
+					if (is.rdbuf()->in_avail() >= 2) {
+						ReadString(is, packet.message);
+					}
+				}
+
+				if (!is.good()) {
+					is.clear();
+				}
+			}
 
 			out.payload = packet;
 			break;
@@ -314,42 +344,6 @@ inline bool DeserializePacket(const char* data, size_t size, NetworkPacket& out)
 			out.payload = packet;
 			break;
 		}
-		/*case PacketType::DownloadStarted: {
-			DownloadStartedPacket packet{};
-
-			uint16_t count;
-			is.read(reinterpret_cast<char*>(&count), sizeof(count));
-
-			if (!is.good()) 
-				return false;
-
-			for (uint16_t i = 0; i < count; ++i) {
-				std::string name;
-				size_t size;
-
-				if (!ReadString(is, name)) 
-					return false;
-
-				is.read(reinterpret_cast<char*>(&size), sizeof(size));
-				if (!is.good()) 
-					return false;
-
-				packet.files_to_download.emplace_back(name, size);
-			}
-
-			out.payload = packet;
-			break;
-		}
-		case PacketType::DownloadProgress: {
-			DownloadProgressPacket packet{};
-			is.read(reinterpret_cast<char*>(&packet), sizeof(packet));
-
-			if (!is.good()) 
-				return false;
-
-			out.payload = packet;
-			break;
-		}*/
 		case PacketType::EmitEvent:
 		case PacketType::EmitBrowserEvent:
 		case PacketType::ClientEmitEvent: {

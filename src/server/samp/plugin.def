@@ -6,3 +6,4 @@ EXPORTS
 	AmxUnload
 	OnPlayerConnect
 	OnPlayerDisconnect
+	OnPlayerRequestClass

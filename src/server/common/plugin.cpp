@@ -7,7 +7,8 @@
 #include "shared/packet-serializer.hpp"
 #include "shared/packet.hpp"
 #include "shared/utils.hpp"
-#include <shared/events.hpp>
+#include "shared/events.hpp"
+#include "shared/version.hpp"
 
 CefPlugin::CefPlugin()
 {
@@ -112,29 +113,65 @@ void CefPlugin::Shutdown()
 
 void CefPlugin::OnPlayerConnect(int playerid)
 {
-	sessions_->RegisterPlayer(playerid);
+    if (!bridge_)
+        return;
+
+    if (bridge_->IsPlayerNpcBot(playerid))
+    {
+        LOG_DEBUG("OnPlayerConnect: player %d is NPC -> ignored", playerid);
+        return;
+    }
+
+    sessions_->RegisterPlayer(playerid);
+    LOG_DEBUG("OnPlayerConnect: player %d registered", playerid);
 }
 
 void CefPlugin::OnPlayerClientInit(int playerid)
 {
-	auto session = sessions_->GetSession(playerid);
-	if (session && session->handshake_complete) {
-		LOG_INFO("[CefPlugin] Player %d connected, CEF handshake complete.", playerid);
-		NotifyCefInitialize(session, true);
-		return;
+    if (!bridge_ || !running_)
+        return;
+
+    if (bridge_->IsPlayerNpcBot(playerid))
+    {
+        LOG_DEBUG("OnPlayerClientInit: player %d is NPC -> ignored", playerid);
+        return;
+    }
+
+    auto session = sessions_->GetSession(playerid);
+    if (!session)
+    {
+        LOG_WARN("OnPlayerClientInit: no session for player %d (not registered?)", playerid);
+        return;
+    }
+
+    if (session->handshake_complete && !session->cef_init_notified)
+    {
+        LOG_DEBUG("Player %d client init: handshake already complete -> OnCefInitialize(true)", playerid);
+        NotifyCefInitialize(session, true);
+        return;
+    }
+
+    // Avoid starting multiple timers
+	bool expected = false;
+	if (!session->cef_init_timer_started.compare_exchange_strong(expected, true))
+	{
+	    return;
 	}
 
-	auto timer = std::make_shared<asio::steady_timer>(io_context_);
+    auto timer = std::make_shared<asio::steady_timer>(io_context_);
     timer->expires_after(std::chrono::seconds(10));
-    timer->async_wait([this, playerid, timer](const std::error_code& error_code) {
-        if (error_code || !running_) {
+    timer->async_wait([this, playerid, timer](const std::error_code& error_code)
+    {
+        if (error_code || !running_ || !bridge_)
             return;
-        }
 
         auto session = sessions_->GetSession(playerid);
-        if (!session) return;
+        if (!session)
+            return;
 
-        if (!session->handshake_complete) {
+        if (!session->handshake_complete && !session->cef_init_notified)
+        {
+            LOG_DEBUG("Player %d: handshake timeout -> OnCefInitialize(false)", playerid);
             NotifyCefInitialize(session, false);
         }
     });
@@ -142,7 +179,14 @@ void CefPlugin::OnPlayerClientInit(int playerid)
 
 void CefPlugin::OnPlayerDisconnect(int playerid)
 {
-	sessions_->RemovePlayer(playerid);
+    if (!bridge_)
+        return;
+
+    if (bridge_->IsPlayerNpcBot(playerid))
+        return;
+
+    sessions_->RemovePlayer(playerid);
+    LOG_DEBUG("OnPlayerDisconnect: player %d removed", playerid);
 }
 
 void CefPlugin::OnPacketReceived(const asio::ip::udp::endpoint& from, const char* data, int len)
@@ -181,36 +225,92 @@ void CefPlugin::OnPacketReceived(const asio::ip::udp::endpoint& from, const char
 
 void CefPlugin::HandleRequestJoin(const asio::ip::udp::endpoint& from, const RequestJoinPacket& join_packet)
 {
+    if (!bridge_ || !running_)
+        return;
+
     int playerid = join_packet.playerid;
 
     std::string from_ip = from.address().to_string();
     std::string official_ip = bridge_->GetPlayerAddressIp(playerid);
 
-    LOG_INFO("[CEF] RequestJoin pid=%d from=%s:%d official=%s", playerid, from_ip.c_str(), (int)from.port(), official_ip.c_str());
-
-    if (!official_ip.empty() && official_ip != from_ip)
+    if (playerid < 0 || bridge_->IsPlayerNpcBot(playerid))
     {
-        LOG_WARN("[CEF] RequestJoin dropped: IP mismatch (official=%s, from=%s)", official_ip.c_str(), from_ip.c_str());
+        LOG_DEBUG("RequestJoin refused: pid=%d invalid/NPC (from %s:%d)", playerid, from_ip.c_str(), (int)from.port());
         return;
     }
 
-	auto session = sessions_->GetOrCreateSession(playerid);
-	session->address = from;
-	session->handshake_status = HandshakeStatus::CHALLENGED;
+    auto session = sessions_->GetSession(playerid);
+    if (!session)
+    {
+        LOG_WARN("RequestJoin refused: no session for pid=%d (from %s:%d)", playerid, from_ip.c_str(), (int)from.port());
+        return;
+    }
 
-	sessions_->MapAddressToPlayer(playerid, from);
+    LOG_INFO("RequestJoin pid=%d from=%s:%d official=%s", playerid, from_ip.c_str(), (int)from.port(), official_ip.c_str());
 
-	HandshakeChallengePacket response;
-	response.cookie = security_->GenerateCookie(from);
-	response.server_public_key = security_->InitiateKeyExchange(playerid);
+    if (!official_ip.empty() && official_ip != from_ip)
+    {
+        LOG_WARN("RequestJoin dropped: IP mismatch (pid=%d, official=%s, from=%s)", playerid, official_ip.c_str(), from_ip.c_str());
+        return;
+    }
 
-	SendRawPacketToEndpoint(from, PacketType::HandshakeChallenge, response);
+    if (session->handshake_status == HandshakeStatus::CONNECTED)
+    {
+        LOG_DEBUG("RequestJoin ignored: pid=%d already CONNECTED", playerid);
+        return;
+    }
+
+    const uint32_t clientVersion = join_packet.client_version;
+    const uint32_t serverVersion = PLUGIN_VERSION_U32;
+    if (clientVersion != serverVersion)
+    {
+        JoinResponsePacket reject;
+        reject.accepted = false;
+        reject.kcp_conv_id = 0;
+        reject.manifest_json.clear();
+        reject.reject_reason = static_cast<uint8_t>(JoinRejectReason::VersionMismatch);
+        reject.server_version = serverVersion;
+        reject.client_version = clientVersion;
+        reject.message = "CEF version mismatch";
+
+        LOG_WARN("RequestJoin refused: version mismatch (pid=%d client=%s server=%s)",
+            playerid,
+            VersionToString(clientVersion).c_str(),
+            VersionToString(serverVersion).c_str());
+
+        SendRawPacketToEndpoint(from, PacketType::JoinResponse, reject);
+
+        session->handshake_status = HandshakeStatus::NONE;
+        session->handshake_complete = false;
+        NotifyCefInitialize(session, false);
+        return;
+    }
+    
+    session->address = from;
+    session->handshake_status = HandshakeStatus::CHALLENGED;
+    sessions_->MapAddressToPlayer(playerid, from);
+
+    HandshakeChallengePacket response;
+    response.cookie = security_->GenerateCookie(from);
+    response.server_public_key = security_->InitiateKeyExchange(playerid);
+
+    SendRawPacketToEndpoint(from, PacketType::HandshakeChallenge, response);
 }
 
 void CefPlugin::HandleHandshakeFinalize(const asio::ip::udp::endpoint& from, 
 	const HandshakeFinalizePacket& finalize_packet, 
 	std::shared_ptr<NetworkSession> session)
 {
+    if (!session || !bridge_ || !running_)
+        return;
+
+    if (session->address != from)
+    {
+        std::string from_ip = from.address().to_string();
+        LOG_WARN("[CEF] HandshakeFinalize dropped: endpoint changed pid=%d (from %s:%d)", session->playerid, from_ip.c_str(), (int)from.port());
+        return;
+    }
+
 	if (!security_->ValidateCookie(from, finalize_packet.cookie))
 		return;
 
@@ -224,6 +324,10 @@ void CefPlugin::HandleHandshakeFinalize(const asio::ip::udp::endpoint& from,
 	JoinResponsePacket join_response;
 	join_response.accepted = true;
 	join_response.kcp_conv_id = session->playerid;
+    join_response.reject_reason = static_cast<uint8_t>(JoinRejectReason::None);
+    join_response.server_version = PLUGIN_VERSION_U32;
+    join_response.client_version = PLUGIN_VERSION_U32;
+    join_response.message.clear();
 
 	nlohmann::json manifest = resource_->GetManifestAsJson();
 	if (!manifest.is_null()) {
@@ -246,7 +350,8 @@ void CefPlugin::HandleHandshakeFinalize(const asio::ip::udp::endpoint& from,
 
 	session->handshake_complete = true;
 
-	LOG_INFO("Network handshake for player %d is complete.", session->playerid);
+	LOG_DEBUG("Network handshake for player %d is complete.", session->playerid);
+    NotifyCefInitialize(session, true);
 }
 
 void CefPlugin::HandleKcpInput(std::shared_ptr<NetworkSession> session)
@@ -476,6 +581,8 @@ void CefPlugin::NotifyCefInitialize(std::shared_ptr<NetworkSession> session, boo
 
 void CefPlugin::NotifyCefReady(std::shared_ptr<NetworkSession> session)
 {
+    LOG_DEBUG("CefPlugin::NotifyCefReady");
+
 	if (!session || !bridge_)
 		return;
 

@@ -121,3 +121,8 @@ void SampPlatformBridge::KickPlayer(int playerid)
 {
     sampgdk_Kick(playerid);
 }
+
+bool SampPlatformBridge::IsPlayerNpcBot(int playerid)
+{
+    return sampgdk_IsPlayerNPC(playerid);
+}

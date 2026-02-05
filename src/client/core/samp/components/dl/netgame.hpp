@@ -17,6 +17,7 @@ public:
     std::string GetIp() const override;
     int GetPort() const override;
 
+    int GetState() const override;
     int GetLocalPlayerId() const override;
     std::string GetLocalPlayerName() const override;
 

@@ -8,7 +8,8 @@
 #include "samp/samp.hpp"
 #include "samp/components/netgame.hpp"
 #include "samp/hooks/netgame.hpp"
-#include <shared/events.hpp>
+#include "shared/events.hpp"
+#include "shared/version.hpp"
 
 constexpr int CONNECT_RETRY_INTERVAL_MS = 2000;
 constexpr int KCP_UPDATE_INTERVAL_MS = 10;
@@ -149,7 +150,7 @@ void NetworkManager::DoSendRequestJoin()
 
 	LOG_INFO("[CLIENT] Sending RequestJoin packet (attempt {}/{})...", join_attempts_, MAX_JOIN_ATTEMPTS);
 
-	RequestJoinPacket pkt{ playerid_ };
+	RequestJoinPacket pkt{ playerid_, PLUGIN_VERSION_U32 };
 	SendPacket(PacketType::RequestJoin, pkt);
 
 	connect_timer_.expires_after(std::chrono::milliseconds(CONNECT_RETRY_INTERVAL_MS));
@@ -226,12 +227,25 @@ void NetworkManager::HandleRawMessage(const char* data, size_t len)
 		}
 		case PacketType::JoinResponse:
 		{
-			if (state_ != ConnectionState::AWAITING_ACCEPTANCE)
+			if (state_ != ConnectionState::AWAITING_ACCEPTANCE && state_ != ConnectionState::SENDING_JOIN)
 				return;
 
 			const auto& response = std::get<JoinResponsePacket>(packet.payload);
 			if (!response.accepted) {
-				LOG_ERROR("[CLIENT] Join rejected by server.");
+				const uint32_t sv = response.server_version;
+				const uint32_t cv = response.client_version;
+				std::string msg = response.message;
+				
+				if (msg.empty()) 
+					msg = "Join rejected";
+
+				LOG_ERROR("[CLIENT] Join rejected by server: {} (reason={}, client={}, server={})",
+					msg,
+					(int)response.reject_reason,
+					VersionToString(cv),
+					VersionToString(sv));
+
+				non_cef_server_.store(true);
 				Disconnect();
 				return;
 			}

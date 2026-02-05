@@ -11,6 +11,7 @@ public:
     std::string GetIp() const;
     int GetPort() const;
 
+    int GetState() const;
     int GetLocalPlayerId() const;
     std::string GetLocalPlayerName() const;
 
