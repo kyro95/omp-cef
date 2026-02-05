@@ -13,11 +13,12 @@
 #include "app.hpp"
 #include "audio.hpp"
 #include "client.hpp"
+#include "focus.hpp"
 #include "rendering/render_manager.hpp"
 #include "network/network_manager.hpp"
 #include "scheme_handler.hpp"
 #include "system/gta.hpp"
-#include <samp/components/netgame.hpp>
+#include "samp/components/netgame.hpp"
 
 static void ConfigureBrowserSettings(CefBrowserSettings& settings)
 {
@@ -970,18 +971,30 @@ void BrowserManager::FocusBrowser(int browserId, bool focus)
         }
         focusedBrowserId_ = browserId;
         instance_to_change->view.SetFocused(true);
-        if (instance_to_change->browser && instance_to_change->browser->GetHost())
+
+        if (instance_to_change->browser && instance_to_change->browser->GetHost()) {
             instance_to_change->browser->GetHost()->SetFocus(true);
+        }
+            
         LOG_DEBUG("[CEF] Browser {} gained focus.", browserId);
     }
     else
     {
         if (focusedBrowserId_ != browserId)
             return;
+
         focusedBrowserId_ = -1;
         instance_to_change->view.SetFocused(false);
-        if (instance_to_change->browser && instance_to_change->browser->GetHost())
-            instance_to_change->browser->GetHost()->SetFocus(false);
+
+        if (instance_to_change->browser)
+        {
+            if (auto host = instance_to_change->browser->GetHost())
+            {
+                host->SetFocus(false);
+                host->SendCaptureLostEvent();
+            }
+        }
+
         LOG_DEBUG("[CEF] Browser {} lost focus.", browserId);
     }
 }
@@ -1112,6 +1125,13 @@ LRESULT BrowserManager::OnWndProcMessage(HWND hwnd, UINT msg, WPARAM wParam, LPA
         case WM_KEYUP:
         case WM_CHAR:
         {
+            const bool textInputFocused = (focus_ != nullptr) && focus_->IsTextInputFocused(focused_inst->id);
+            if (!textInputFocused)
+            {
+                // T chat, TAB scoreboard, etc..
+                return false;
+            }
+
             CefKeyEvent evt;
             evt.windows_key_code = static_cast<int>(wParam);
             evt.native_key_code = static_cast<int>(lParam);

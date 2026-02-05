@@ -7,13 +7,15 @@
 void FocusManager::Update()
 {
     auto* game = GetComponent<GameComponent>();
-    if (!game) 
+    if (!game)
         return;
 
     const bool is_cef_focused_now = manager_.IsAnyBrowserFocused();
-    if (is_cef_focused_now) 
+
+    if (is_cef_focused_now)
     {
-        game->SetCursorMode(CMODE_LOCKCAMANDCONTROL, TRUE);
+        game->SetCursorMode(CMODE_LOCKCAMANDCONTROL, FALSE);
+        game->ProcessInputEnabling();
 
         const cef_cursor_type_t type = manager_.GetCursorType();
         HCURSOR hCursor = nullptr;
@@ -25,7 +27,7 @@ void FocusManager::Update()
                 hCursor = LoadCursor(nullptr, IDC_IBEAM); 
                 break;
             case CT_HAND:    
-                hCursor = LoadCursor(nullptr, IDC_HAND); 
+                hCursor = LoadCursor(nullptr, IDC_HAND);  
                 break;
             default:         
                 hCursor = LoadCursor(nullptr, IDC_ARROW); 
@@ -34,22 +36,28 @@ void FocusManager::Update()
 
         CursorHook::Instance().SetForcedCursor(hCursor);
         CursorHook::Instance().SetForced(true);
-
         ::SetCursor(hCursor);
 
         if (!was_cef_focused_last_frame_)
-            ::ShowCursor(TRUE); 
+        {
+            while (::ShowCursor(TRUE) < 0) {}
+        }
     }
-    else if (was_cef_focused_last_frame_) 
+    else if (was_cef_focused_last_frame_)
     {
         CursorHook::Instance().SetForced(false);
-        RestoreGameControls();
+
+        while (::ShowCursor(FALSE) >= 0) {}
+        ::SetCursor(nullptr);
+
+        game->SetCursorMode(CMODE_NONE, TRUE);
+        game->ProcessInputEnabling();
     }
 
     was_cef_focused_last_frame_ = is_cef_focused_now;
 }
 
-void FocusManager::RestoreGameControls()
+/*void FocusManager::RestoreGameControls()
 {
     ShowCursor(FALSE); 
     SetCursor(nullptr);
@@ -57,7 +65,7 @@ void FocusManager::RestoreGameControls()
     auto* game = GetComponent<GameComponent>();
     if (game) 
         game->SetCursorMode(CMODE_NONE, TRUE);
-}
+}*/
 
 void FocusManager::SetInputFocus(int browserId, bool has_focus)
 {
@@ -65,7 +73,8 @@ void FocusManager::SetInputFocus(int browserId, bool has_focus)
         input_focused_browser_id_.store(browserId); 
     }
     else {
-        int expected_id = browserId; input_focused_browser_id_.compare_exchange_strong(expected_id, -1);
+        int expected_id = browserId; 
+        input_focused_browser_id_.compare_exchange_strong(expected_id, -1);
     }
 }
 

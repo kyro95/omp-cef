@@ -338,7 +338,7 @@ bool ResourceManager::LoadPakIntoVFS(const std::string& resourceName, const std:
 			continue;
 		}
 
-		std::array<uint8_t, 16> iv;
+		std::array<uint8_t, 16> iv{};
 		std::copy_n(encrypted_data.begin(), 16, iv.begin());
 
 		std::vector<uint8_t> ciphertext(encrypted_data.begin() + 16, encrypted_data.end());

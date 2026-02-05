@@ -14,14 +14,22 @@ public:
 
     bool Initialize();
     void Shutdown();
+    void EnsureInstalled();
 
     std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> OnMessage;
 
 private:
     static LRESULT CALLBACK StaticWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-    HWND    hwnd_          = nullptr;
-    WNDPROC originalProc_  = nullptr;
+    HWND hwnd_ = nullptr;
+
+    // The REAL window proc before we ever hooked (GTA's original proc).
+    WNDPROC baseProc_ = nullptr;
+
+    // The proc currently installed when we last ensured (often SA-MP proc).
+    WNDPROC nextProc_ = nullptr;
+
+    DWORD lastEnsureTick_ = 0;
 
     static inline WndProcHook* s_self_ = nullptr;
 };

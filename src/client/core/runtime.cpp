@@ -88,19 +88,6 @@ bool Runtime::Start()
 
 	CursorHook::Instance().Initialize(*hooks_);
 
-	RenderManager::Instance().SetHookManager(hooks_.get());
-	if (!RenderManager::Instance().Initialize())
-	{
-		LOG_FATAL("RenderManager init failed (D3D9 hook) (game unaffected).");
-		return true;
-	}
-
-	RenderManager::Instance().OnPresent = [this]()
-	{
-		if (app_)
-			app_->Tick();
-	};
-
 	wndproc_ = std::make_unique<WndProcHook>(gta_->GetHwnd());
 	if (!wndproc_->Initialize())
 	{
@@ -126,6 +113,22 @@ bool Runtime::Start()
 		}
 
 		return FALSE;
+	};
+
+	RenderManager::Instance().SetHookManager(hooks_.get());
+	if (!RenderManager::Instance().Initialize())
+	{
+		LOG_FATAL("RenderManager init failed (D3D9 hook) (game unaffected).");
+		return true;
+	}
+
+	RenderManager::Instance().OnPresent = [this]()
+	{
+		if (wndproc_)
+			wndproc_->EnsureInstalled();
+
+		if (app_)
+			app_->Tick();
 	};
 
 	samp_version_ = std::make_unique<SampVersionManager>();

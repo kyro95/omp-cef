@@ -16,10 +16,12 @@ public:
     FocusManager& operator=(const FocusManager&) = delete;
 
     void Update();
-    void RestoreGameControls();
+    // void RestoreGameControls();
     void SetInputFocus(int browserId, bool has_focus);
     bool ShouldBlockChat() const;
 
+    int GetInputFocusedBrowserId() const { return input_focused_browser_id_.load(); }
+    bool IsTextInputFocused(int browserId) const { return input_focused_browser_id_.load() == browserId; }
 private:
     BrowserManager& manager_;
 
