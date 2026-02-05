@@ -1,4 +1,28 @@
 
+## [1.0.5](https://github.com/aurora-mp/omp-cef/compare/v1.0.4..v1.0.5) (2026-02-05)
+
+### ✨ Features
+
+- *(server)* Extend OnCefInitialize with reason + message - ([bcf0c78](https://github.com/aurora-mp/omp-cef/commit/bcf0c78fdbd76d2139b4f55db6862f0455ff8fcf))
+
+### 🐛 Bug Fixes
+
+- *(client)* Make WndProc hook resilient to SA-MP replacing window proc - ([e437c69](https://github.com/aurora-mp/omp-cef/commit/e437c690e6908880e2eb06ab5df024efd51787f9))
+- *(client)* Make WndProc hook resilient to SA-MP replacing window proc - ([e437c69](https://github.com/aurora-mp/omp-cef/commit/e437c690e6908880e2eb06ab5df024efd51787f9))
+- *(client)* Make WndProc hook resilient to SA-MP replacing window proc - ([e437c69](https://github.com/aurora-mp/omp-cef/commit/e437c690e6908880e2eb06ab5df024efd51787f9))
+- *(client)* Make WndProc hook resilient to SA-MP replacing window proc - ([e437c69](https://github.com/aurora-mp/omp-cef/commit/e437c690e6908880e2eb06ab5df024efd51787f9))
+- *(client)* Make WndProc hook resilient to SA-MP replacing window proc - ([e437c69](https://github.com/aurora-mp/omp-cef/commit/e437c690e6908880e2eb06ab5df024efd51787f9))
+- *(server)* Fix NotifyCefInitialize default params. - ([a414d14](https://github.com/aurora-mp/omp-cef/commit/a414d148a59481025f10c0832a74fa37d224dff6))
+- Handle NPC playerid offset + add strict client/server version check + fix encoding - ([06ee8bf](https://github.com/aurora-mp/omp-cef/commit/06ee8bf185c196fc5ae59742d92c46964a88efce))
+- Handle NPC playerid offset + add strict client/server version check + fix encoding - ([06ee8bf](https://github.com/aurora-mp/omp-cef/commit/06ee8bf185c196fc5ae59742d92c46964a88efce))
+- Handle NPC playerid offset + add strict client/server version check + fix encoding - ([06ee8bf](https://github.com/aurora-mp/omp-cef/commit/06ee8bf185c196fc5ae59742d92c46964a88efce))
+- Handle NPC playerid offset + add strict client/server version check + fix encoding - ([06ee8bf](https://github.com/aurora-mp/omp-cef/commit/06ee8bf185c196fc5ae59742d92c46964a88efce))
+- Handle NPC playerid offset + add strict client/server version check + fix encoding - ([06ee8bf](https://github.com/aurora-mp/omp-cef/commit/06ee8bf185c196fc5ae59742d92c46964a88efce))
+
+
+
+
+
 ## [1.0.4](https://github.com/aurora-mp/omp-cef/compare/v1.0.3..v1.0.4) (2026-02-03)
 
 ### 🧹 Chore
