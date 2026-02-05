@@ -578,7 +578,7 @@ void CefPlugin::SendPacketToPlayer(int playerid, PacketType type, const PacketPa
     ikcp_flush(session->kcp_instance);
 }
 
-void CefPlugin::NotifyCefInitialize(std::shared_ptr<NetworkSession> session, bool success, int reason = CEF_INIT_OK, std::string message = {})
+void CefPlugin::NotifyCefInitialize(std::shared_ptr<NetworkSession> session, bool success, int reason, std::string message)
 {
 	if (!session || !bridge_)
 		return;
