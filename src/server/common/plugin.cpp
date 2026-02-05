@@ -147,7 +147,7 @@ void CefPlugin::OnPlayerClientInit(int playerid)
     if (session->handshake_complete && !session->cef_init_notified)
     {
         LOG_DEBUG("Player %d client init: handshake already complete -> OnCefInitialize(true)", playerid);
-        NotifyCefInitialize(session, true);
+        NotifyCefInitialize(session, true, CEF_INIT_OK, "");
         return;
     }
 
@@ -172,7 +172,7 @@ void CefPlugin::OnPlayerClientInit(int playerid)
         if (!session->handshake_complete && !session->cef_init_notified)
         {
             LOG_DEBUG("Player %d: handshake timeout -> OnCefInitialize(false)", playerid);
-            NotifyCefInitialize(session, false);
+            NotifyCefInitialize(session, false, CEF_INIT_TIMEOUT, "CEF handshake timeout");
         }
     });
 }
@@ -282,7 +282,8 @@ void CefPlugin::HandleRequestJoin(const asio::ip::udp::endpoint& from, const Req
 
         session->handshake_status = HandshakeStatus::NONE;
         session->handshake_complete = false;
-        NotifyCefInitialize(session, false);
+        
+        NotifyCefInitialize(session, false, CEF_INIT_VERSION_MISMATCH, reject.message);
         return;
     }
     
@@ -307,16 +308,30 @@ void CefPlugin::HandleHandshakeFinalize(const asio::ip::udp::endpoint& from,
     if (session->address != from)
     {
         std::string from_ip = from.address().to_string();
-        LOG_WARN("[CEF] HandshakeFinalize dropped: endpoint changed pid=%d (from %s:%d)", session->playerid, from_ip.c_str(), (int)from.port());
+        LOG_WARN("HandshakeFinalize dropped: endpoint changed pid=%d (from %s:%d)", session->playerid, from_ip.c_str(), (int)from.port());
         return;
     }
 
-	if (!security_->ValidateCookie(from, finalize_packet.cookie))
-		return;
+    if (!security_->ValidateCookie(from, finalize_packet.cookie))
+    {
+        LOG_WARN("HandshakeFinalize failed: invalid cookie pid=%d", session->playerid);
+        session->handshake_status = HandshakeStatus::NONE;
+        session->handshake_complete = false;
 
-	auto session_keys = security_->FinalizeKeyExchange(session->playerid, finalize_packet.client_public_key);
-	if (!session_keys)
-		return;
+        NotifyCefInitialize(session, false, CEF_INIT_HANDSHAKE_FAILED, "Handshake failed: invalid cookie");
+        return;
+    }
+
+    auto session_keys = security_->FinalizeKeyExchange(session->playerid, finalize_packet.client_public_key);
+    if (!session_keys)
+    {
+        LOG_WARN("HandshakeFinalize failed: key exchange pid=%d", session->playerid);
+        session->handshake_status = HandshakeStatus::NONE;
+        session->handshake_complete = false;
+
+        NotifyCefInitialize(session, false, CEF_INIT_HANDSHAKE_FAILED, "Handshake failed: key exchange");
+        return;
+    }
 
 	session->rx_key = std::move(session_keys->rx);
 	session->tx_key = std::move(session_keys->tx);
@@ -350,8 +365,9 @@ void CefPlugin::HandleHandshakeFinalize(const asio::ip::udp::endpoint& from,
 
 	session->handshake_complete = true;
 
-	LOG_DEBUG("Network handshake for player %d is complete.", session->playerid);
-    NotifyCefInitialize(session, true);
+    NotifyCefInitialize(session, true, CEF_INIT_OK, "");
+
+    LOG_DEBUG("Network handshake for player %d is complete.", session->playerid);
 }
 
 void CefPlugin::HandleKcpInput(std::shared_ptr<NetworkSession> session)
@@ -562,7 +578,7 @@ void CefPlugin::SendPacketToPlayer(int playerid, PacketType type, const PacketPa
     ikcp_flush(session->kcp_instance);
 }
 
-void CefPlugin::NotifyCefInitialize(std::shared_ptr<NetworkSession> session, bool success)
+void CefPlugin::NotifyCefInitialize(std::shared_ptr<NetworkSession> session, bool success, int reason = CEF_INIT_OK, std::string message = {})
 {
 	if (!session || !bridge_)
 		return;
@@ -576,6 +592,8 @@ void CefPlugin::NotifyCefInitialize(std::shared_ptr<NetworkSession> session, boo
     std::vector<Argument> args;
     args.emplace_back(session->playerid);
     args.emplace_back(success);
+    args.emplace_back(reason);
+    args.emplace_back(message);
     bridge_->CallPawnPublic("OnCefInitialize", args);
 }
 

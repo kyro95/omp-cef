@@ -24,6 +24,16 @@ struct RegisteredEvent
     std::vector<ArgumentType> signature;
 };
 
+enum CefInitReason : int
+{
+    CEF_INIT_OK = 0,
+    CEF_INIT_TIMEOUT = 1,
+    CEF_INIT_VERSION_MISMATCH = 2,
+    CEF_INIT_IP_MISMATCH = 3,
+    CEF_INIT_HANDSHAKE_FAILED = 4,
+    CEF_INIT_UNKNOWN = 5
+};
+
 class CefPlugin
 {
 public:
@@ -47,7 +57,7 @@ public:
 	void SendRawPacketToEndpoint(const asio::ip::udp::endpoint& endpoint, PacketType type, const PacketPayload& payload);
 	void SendPacketToPlayer(int playerid, PacketType type, const PacketPayload& payload);
 
-	void NotifyCefInitialize(std::shared_ptr<NetworkSession> session, bool success);
+	void NotifyCefInitialize(std::shared_ptr<NetworkSession> session, bool success, int reason = CEF_INIT_OK, std::string message = {});
 	void NotifyCefReady(std::shared_ptr<NetworkSession> session);
 	void HandleClientEvent(int playerid, const ClientEmitEventPacket& payload);
 	void RegisterEvent(const std::string& name, const std::string& callback, const std::vector<ArgumentType>& signature);

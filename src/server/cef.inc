@@ -4,6 +4,37 @@
 #define _INC_cef
 
 /**
+ * Result codes for the CEF client initialization / handshake.
+ *
+ * These values are passed to OnCefInitialize() to indicate why the CEF client
+ * was accepted or rejected for a player.
+ *
+ * - If success == true: reason is CEF_INIT_OK and message is usually empty.
+ * - If success == false: reason describes the failure cause and message may
+ *   contain additional details (it can be empty depending on the failure).
+ */
+enum E_CEF_INIT_REASON
+{
+    // Initialization succeeded, secure channel is ready.
+    CEF_INIT_OK = 0,
+
+    // Handshake did not complete within the timeout (client.dll missing/blocked, no connection).
+    CEF_INIT_TIMEOUT,
+
+    // Client/server versions differ (server was updated but client.dll wasn't).
+    CEF_INIT_VERSION_MISMATCH,
+
+    // UDP endpoint/IP mismatch detected (spoofed packet or networking mismatch).
+    CEF_INIT_IP_MISMATCH,
+
+    // Handshake failed (invalid cookie / key exchange failed / invalid state).
+    CEF_INIT_HANDSHAKE_FAILED,
+
+    // Unknown/unclassified failure.
+    CEF_INIT_UNKNOWN
+};
+
+/**
  * Defines the possible status codes for a browser creation attempt.
  */
 enum E_CEF_CREATE_STATUS
@@ -259,6 +290,13 @@ native CEF_ToggleHudComponent(playerid, E_HUD_COMPONENT:componentid, bool:toggle
 native CEF_ToggleSpawnScreen(playerid, bool:toggle);
 
 /**
+ *
+ * @param playerid      The ID of the player for whom the screen will be toggled.
+ * @param toggle        Set to 'true' to show the chat input, 'false' to hide it.
+*/
+// TODO: native CEF_ToggleChatInput(playerid, bool:toggle);
+
+/**
  * CALLBACKS
  */
 
@@ -271,8 +309,10 @@ native CEF_ToggleSpawnScreen(playerid, bool:toggle);
  *
  * @param playerid      The ID of the player whose client is ready.
  * @param success       Always true. (Reserved for future use).
+ * @param reason        Detailed initialization result (see E_CEF_INIT_REASON).
+ * @param message       Additional details (can be empty).
 */
-forward OnCefInitialize(playerid, bool:success);
+forward OnCefInitialize(playerid, bool:success, E_CEF_INIT_REASON:reason, const message[]);
 
 /**
  * Called when a player's CEF client is fully ready (ressources downloaded ... etc)
