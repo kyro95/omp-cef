@@ -72,7 +72,7 @@ bool Runtime::Start()
 	browser_ = std::make_unique<BrowserManager>(*audio_, *gta_, *resources_, *network_);
 	focus_ = std::make_unique<FocusManager>(*browser_);
 	browser_->SetFocusManager(focus_.get());
-	if (!browser_->Initialize()) 
+	if (!browser_->Initialize())
 	{
 		LOG_FATAL("CEF init failed. Disabling CEF features (game unaffected).");
 		return true;
@@ -80,7 +80,7 @@ bool Runtime::Start()
 
 	// Hooks
 	hooks_ = std::make_unique<HookManager>();
-	if (!hooks_->Initialize()) 
+	if (!hooks_->Initialize())
 	{
 		LOG_FATAL("HookManager init failed (game unaffected).");
 		return true;
@@ -88,6 +88,7 @@ bool Runtime::Start()
 
 	CursorHook::Instance().Initialize(*hooks_);
 
+	// WndProc
 	wndproc_ = std::make_unique<WndProcHook>(gta_->GetHwnd());
 	if (!wndproc_->Initialize())
 	{
@@ -97,8 +98,6 @@ bool Runtime::Start()
 
 	wndproc_->OnMessage = [this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT
 	{
-		RenderManager::Instance().PollD3D();
-
 		if (browser_ && browser_->OnWndProcMessage(hwnd, msg, wParam, lParam))
 			return TRUE;
 
@@ -115,7 +114,10 @@ bool Runtime::Start()
 		return FALSE;
 	};
 
+	// Render manager
 	RenderManager::Instance().SetHookManager(hooks_.get());
+	RenderManager::Instance().SetGameWindow(gta_->GetHwnd());
+
 	if (!RenderManager::Instance().Initialize())
 	{
 		LOG_FATAL("RenderManager init failed (D3D9 hook) (game unaffected).");
@@ -124,22 +126,27 @@ bool Runtime::Start()
 
 	RenderManager::Instance().OnPresent = [this]()
 	{
-		if (wndproc_)
-			wndproc_->EnsureInstalled();
+		// Safe place to PollD3D
+		if (!RenderManager::Instance().GetDevice())
+			RenderManager::Instance().PollD3D();
 
 		if (app_)
 			app_->Tick();
 	};
 
+	// SA:MP version
 	samp_version_ = std::make_unique<SampVersionManager>();
 	samp_version_->Initialize();
 
 	SampAddresses::Instance().Initialize(*samp_version_);
 
+	// SA:MP hooks
 	samp_ = std::make_unique<Samp>(*hooks_);
 	samp_->OnLoaded = [this]()
 	{
-		RenderManager::Instance().PollD3D();
+		if (!RenderManager::Instance().GetDevice())
+			RenderManager::Instance().PollD3D();
+
 		renderhook_ = std::make_unique<RenderHook>(*hooks_, *browser_);
 		if (!renderhook_->Initialize())
 		{
@@ -163,7 +170,8 @@ bool Runtime::Start()
 	}
 
 	netgame_hook_ = std::make_unique<NetGameHook>(*hooks_, *resources_);
-	if (!netgame_hook_->Initialize()) {		
+	if (!netgame_hook_->Initialize())
+	{
 		LOG_FATAL("Failed to initialize NetGame hooks (game unaffected).");
 		return true;
 	}
@@ -188,43 +196,43 @@ bool Runtime::Start()
 void Runtime::Stop()
 {
 	if (app_)
-        app_->Shutdown();
+		app_->Shutdown();
 
-    if (download_dialog_)
-        download_dialog_.reset();
+	if (download_dialog_)
+		download_dialog_.reset();
 
-    if (chat_hook_)
-    {
-        chat_hook_->Shutdown();
-        chat_hook_.reset();
-    }
+	if (chat_hook_)
+	{
+		chat_hook_->Shutdown();
+		chat_hook_.reset();
+	}
 
-    if (netgame_hook_)
-    {
-        netgame_hook_->Shutdown();
-        netgame_hook_.reset();
-    }
+	if (netgame_hook_)
+	{
+		netgame_hook_->Shutdown();
+		netgame_hook_.reset();
+	}
 
-    if (renderhook_)
-    {
-        renderhook_->Shutdown();
-        renderhook_.reset();
-    }
+	if (renderhook_)
+	{
+		renderhook_->Shutdown();
+		renderhook_.reset();
+	}
 
-    if (wndproc_)
-    {
-        wndproc_->Shutdown();
-        wndproc_.reset();
-    }
+	if (wndproc_)
+	{
+		wndproc_->Shutdown();
+		wndproc_.reset();
+	}
 
 	CursorHook::Instance().Shutdown(*hooks_);
-    RenderManager::Instance().Shutdown();
+	RenderManager::Instance().Shutdown();
 
-    if (hooks_)
-    {
-        hooks_->Shutdown();
-        hooks_.reset();
-    }
+	if (hooks_)
+	{
+		hooks_->Shutdown();
+		hooks_.reset();
+	}
 }
 
 Runtime::~Runtime()
