@@ -44,6 +44,7 @@ private:
 
     bool debug_enabled_ = false;
     std::vector<uint8_t> master_resource_key_;
+    bool resources_loader_ui_ = true;
 
     uint16_t server_port_ = 7777;
     uint16_t cef_network_port_ = 7779;

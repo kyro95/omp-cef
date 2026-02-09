@@ -21,6 +21,9 @@ public:
     void ShowError(const char* filename, unsigned long status_code, int attempt, int max_retry);
     void Finish();
 
+    void SetEnabled(bool enabled);
+    bool IsEnabled() const { return enabled_; }
+
 private:
     void EnsureLoaderVisible();
     void HideLoader();
@@ -33,6 +36,8 @@ private:
     BrowserManager* browser_;
 
     bool active_ = false;
+    bool enabled_ = true;
+    bool loader_visible_ = false;
 
     std::vector<std::pair<std::string, size_t>> files_;
     std::vector<uint64_t> received_by_file_;

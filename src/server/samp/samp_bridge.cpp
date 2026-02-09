@@ -108,6 +108,56 @@ void SampPlatformBridge::CallOnBrowserCreated(int playerid, int browserId, bool 
     }
 }
 
+void SampPlatformBridge::CallOnDownloadStart(int playerid)
+{
+    for (AMX* amx : g_AmxList)
+    {
+        int idx;
+        if (amx_FindPublic(amx, "OnCefDownloadStart", &idx) != AMX_ERR_NONE) 
+            continue;
+
+        amx_Push(amx, playerid);
+
+        cell retval;
+        amx_Exec(amx, &retval, idx);
+    }
+}
+
+void SampPlatformBridge::CallOnDownloadFinish(int playerid)
+{
+    for (AMX* amx : g_AmxList)
+    {
+        int idx;
+        if (amx_FindPublic(amx, "OnCefDownloadFinish", &idx) != AMX_ERR_NONE) 
+            continue;
+
+        amx_Push(amx, playerid);
+
+        cell retval;
+        amx_Exec(amx, &retval, idx);
+    }
+}
+
+void SampPlatformBridge::CallOnPressKey(int playerid, int key, int scancode, int modifiers, bool down, bool repeat)
+{
+    for (AMX* amx : g_AmxList)
+    {
+        int idx;
+        if (amx_FindPublic(amx, "OnCefPressKey", &idx) != AMX_ERR_NONE) 
+            continue;
+
+        amx_Push(amx, repeat);
+        amx_Push(amx, down);
+        amx_Push(amx, modifiers);
+        amx_Push(amx, scancode);
+        amx_Push(amx, key);
+        amx_Push(amx, playerid);
+
+        cell retval;
+        amx_Exec(amx, &retval, idx);
+    }
+}
+
 std::string SampPlatformBridge::GetPlayerAddressIp(int playerid)
 {
     char ip[64] = {};

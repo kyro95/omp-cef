@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <bitset>
 #include <functional>
 #include <memory>
 #include <unordered_map>
@@ -31,7 +32,23 @@ enum class BrowserCreateStatus : int
 enum class RenderMode
 {
     Overlay2D,
-    WorldObject3D
+    WorldObject3D,
+    World2D
+};
+
+//
+struct World2DBrowserData
+{
+    float x = 0.f;
+    float y = 0.f;
+    float z = 0.f;
+
+    // Additional vertical offset applied to z (useful for tooltips above actors).
+    float offsetZ = 1.f;
+
+    // Anchor in [0..1] applied to the view size.
+    float pivotX = 0.5f;
+    float pivotY = 1.0f;
 };
 
 // Holds all data and state related to a single browser instance
@@ -45,6 +62,8 @@ struct BrowserInstance
 
     RenderMode mode = RenderMode::Overlay2D;
     std::string textureName; // Used only for WorldObject3D mode
+
+    World2DBrowserData world2d;
 
     bool visible = true;
     bool controls_chat_input = true;
@@ -97,6 +116,9 @@ public:
     // Browser management
     void CreateBrowser(int id, const std::string& url, bool focused, bool controls_chat, float width, float height);
     void CreateWorldBrowser(int id, const std::string& url, const std::string& textureName, float width, float height);
+    void CreateWorld2DBrowser(int id, const std::string& url, float worldX, float worldY, float worldZ, float width, float height, float offsetZ, float pivotX, float pivotY);
+    void SetWorld2DBrowserPos(int id, float worldX, float worldY, float worldZ);
+    void SetBrowserVisible(int id, bool visible);
     void DestroyBrowser(int id);
     void DestroyAllBrowsers();
     void ReloadBrowser(int id, bool ignoreCache);
@@ -108,6 +130,10 @@ public:
     void OnBeforeEntityRender(CEntity* entity);
     void OnAfterEntityRender(CEntity* entity);
     void UpdateAudioSpatialization();
+
+    // Keyboard capture / filtering (client -> server)
+    void SetKeyCaptureEnabled(bool enabled);
+    void EnableKey(int key, bool enabled);
 
     // Callbacks from BrowserClient
     void OnBrowserCreated(int id, CefRefPtr<CefBrowser> browser);
@@ -144,9 +170,10 @@ public:
     void OnDeviceReset(IDirect3DDevice9* device);
 
 private:
-    void CreateBrowserInternal(
-        int id, const std::string& url, bool focused, bool controls_chat, float width, float height);
+    void CreateBrowserInternal(int id, const std::string& url, bool focused, bool controls_chat, float width, float height);
     void CreateWorldBrowserInternal(int id, const std::string& url, std::string textureName, float width, float height);
+    void CreateWorld2DBrowserInternal(int id, const std::string& url, float worldX, float worldY, float worldZ, float width, float height, float offsetZ, float pivotX, float pivotY);
+
     CEntity* GetEntityFromObjectId(int objectId);
 
 private:
@@ -174,4 +201,8 @@ private:
     std::function<CEntity*(int)> entity_resolver_{};
 
     std::unordered_map<int, PendingPaint> pending_;
+
+    // Keyboard capture / filtering (client -> server)
+    bool key_capture_enabled_ = false;
+    std::bitset<256> key_allowed_{};
 };

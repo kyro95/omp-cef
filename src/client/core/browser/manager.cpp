@@ -19,6 +19,8 @@
 #include "scheme_handler.hpp"
 #include "system/gta.hpp"
 #include "samp/components/netgame.hpp"
+#include "game_sa/CSprite.h"
+#include "shared/events.hpp"
 
 static void ConfigureBrowserSettings(CefBrowserSettings& settings)
 {
@@ -475,6 +477,26 @@ void BrowserManager::CreateWorldBrowser(
     CreateWorldBrowserInternal(id, normalized_url, textureName, width, height);
 }
 
+void BrowserManager::CreateWorld2DBrowser(
+    int id, const std::string& url, float worldX, float worldY, float worldZ, float width, float height, float offsetZ, float pivotX, float pivotY)
+{
+    LOG_DEBUG("[CEF] CreateWorld2DBrowser called with ID={}, url={}, worldX={}, worldY={}, worldZ={}, offsetZ={}, pivotX={}, pivotY={}", 
+        id, url, worldX, worldY, worldZ, offsetZ, pivotX, pivotY);
+    
+    const std::string normalized_url = NormalizeUrlForEmbeds(url);
+    if (normalized_url != url)
+        LOG_DEBUG("[CEF] Normalized URL -> {}", normalized_url);
+
+    if (browsers_.count(id))
+    {
+        LOG_ERROR("[CEF] CreateWorld2DBrowser failed: Browser with ID {} already exists.", id);
+        LOG_ERROR("[CEF] Existing browser mode: {}", (int)browsers_[id]->mode);
+        return;
+    }
+
+    CreateWorld2DBrowserInternal(id, normalized_url, worldX, worldY, worldZ, width, height, offsetZ, pivotX, pivotY);
+}
+
 void BrowserManager::CreateBrowserInternal(
     int id, const std::string& url, bool focused, bool controls_chat, float width, float height)
 {
@@ -592,8 +614,114 @@ void BrowserManager::CreateWorldBrowserInternal(
     windowInfo.SetAsWindowless(gta_.GetHwnd());
     CefBrowserSettings bs;
     ConfigureBrowserSettings(bs);
-    CefBrowserHost::CreateBrowser(
-        windowInfo, browsers_[id]->client, url, bs, nullptr, CefRequestContext::GetGlobalContext());
+    CefBrowserHost::CreateBrowser(windowInfo, browsers_[id]->client, url, bs, nullptr, CefRequestContext::GetGlobalContext());
+}
+
+void BrowserManager::CreateWorld2DBrowserInternal(
+    int id, const std::string& url, float worldX, float worldY, float worldZ, float width, float height, float offsetZ, float pivotX, float pivotY)
+{
+    if (CefCurrentlyOn(TID_UI) == false)
+    {
+        CefPostTask(TID_UI,
+            base::BindOnce(&BrowserManager::CreateWorld2DBrowserInternal,
+                base::Unretained(this),
+                id,
+                url,
+                worldX,
+                worldY,
+                worldZ,
+                width,
+                height,
+                offsetZ,
+                pivotX,
+                pivotY));
+        return;
+    }
+
+    if (browsers_.count(id))
+    {
+        LOG_ERROR("[CEF] CreateWorld2DBrowserInternal: Browser with ID {} already exists (race condition?).", id);
+        return;
+    }
+
+    auto instance = std::make_unique<BrowserInstance>(id);
+    instance->mode = RenderMode::World2D;
+    instance->url = url;
+    instance->client = BrowserClient::Create(id, *this, audio_, focus_, network_);
+    instance->controls_chat_input = false;
+
+    instance->world2d.x = worldX;
+    instance->world2d.y = worldY;
+    instance->world2d.z = worldZ;
+    instance->world2d.offsetZ = offsetZ;
+    instance->world2d.pivotX = pivotX;
+    instance->world2d.pivotY = pivotY;
+
+    if (auto* device = RenderManager::Instance().GetDevice())
+    {
+        instance->view.Initialize(device);
+
+        int browser_width = std::clamp((int)width, 1, 1024);
+        int browser_height = std::clamp((int)height, 1, 1024);
+
+        instance->view.Create(browser_width, browser_height);
+    }
+
+    browsers_[id] = std::move(instance);
+
+    CefWindowInfo windowInfo;
+    windowInfo.SetAsWindowless(gta_.GetHwnd());
+    CefBrowserSettings bs;
+    ConfigureBrowserSettings(bs);
+    CefBrowserHost::CreateBrowser(windowInfo, browsers_[id]->client, url, bs, nullptr, CefRequestContext::GetGlobalContext());
+}
+
+void BrowserManager::SetWorld2DBrowserPos(int id, float worldX, float worldY, float worldZ)
+{
+    if (CefCurrentlyOn(TID_UI) == false)
+    {
+        CefPostTask(TID_UI, base::BindOnce(&BrowserManager::SetWorld2DBrowserPos, base::Unretained(this), id, worldX, worldY, worldZ));
+        return;
+    }
+
+    auto* instance = GetBrowserInstance(id);
+    if (!instance)
+    {
+        LOG_WARN("[CEF] SetWorld2DBrowserPos: Could not find browser with ID {}.", id);
+        return;
+    }
+
+    if (instance->mode != RenderMode::World2D)
+    {
+        LOG_WARN("[CEF] SetWorld2DBrowserPos: Browser {} is not a World2D browser (mode={}).", id, (int)instance->mode);
+        return;
+    }
+
+    instance->world2d.x = worldX;
+    instance->world2d.y = worldY;
+    instance->world2d.z = worldZ;
+}
+
+void BrowserManager::SetBrowserVisible(int id, bool visible)
+{
+    if (CefCurrentlyOn(TID_UI) == false)
+    {
+        CefPostTask(TID_UI, base::BindOnce(&BrowserManager::SetBrowserVisible, base::Unretained(this), id, visible));
+        return;
+    }
+
+    auto* instance = GetBrowserInstance(id);
+    if (!instance)
+    {
+        LOG_WARN("[CEF] SetBrowserVisible: Could not find browser with ID {}.", id);
+        return;
+    }
+
+    instance->visible = visible;
+
+    // If we hide a focused browser, drop focus to avoid stuck input.
+    if (!visible && focusedBrowserId_ == id)
+        FocusBrowser(id, false);
 }
 
 void BrowserManager::DestroyBrowser(int id)
@@ -844,50 +972,101 @@ bool BrowserManager::RenderAll()
 
     UpdateAudioSpatialization();
 
-    // Flush pending paints (D3D thread)
     for (auto& [id, inst] : browsers_)
     {
-        if (!inst) 
+        if (!inst)
             continue;
 
         auto it = pending_.find(id);
-        if (it != pending_.end())
+        if (it == pending_.end())
+            continue;
+
+        auto& pending_paint = it->second;
+        std::lock_guard<std::mutex> lock(pending_paint.mutex);
+
+        if (!pending_paint.ready || pending_paint.pixels.empty())
+            continue;
+
+        if (pending_paint.width <= 0 || pending_paint.height <= 0)
         {
-            auto& pending_paint = it->second;
-            std::lock_guard<std::mutex> lock(pending_paint.mutex);
+            pending_paint.ready = false;
+            continue;
+        }
 
-            if (pending_paint.ready && !pending_paint.pixels.empty())
+        cef_rect_t rect{ 0, 0, pending_paint.width, pending_paint.height };
+
+        if (inst->mode == RenderMode::WorldObject3D)
+        {
+            auto world_renderer = worldRenderers_.find(id);
+            if (world_renderer != worldRenderers_.end() && world_renderer->second)
             {
-                cef_rect_t rect{0, 0, pending_paint.width, pending_paint.height};
-
-                if (inst->mode == RenderMode::WorldObject3D)
-                {
-                    auto world_renderer = worldRenderers_.find(id);
-                    if (world_renderer != worldRenderers_.end())
-                        world_renderer->second->OnPaint(pending_paint.pixels.data(), pending_paint.width, pending_paint.height);
-                }
-                else
-                {
-                    inst->view.UpdateTexture(pending_paint.pixels.data(), &rect, 1);
-                }
-
-                pending_paint.ready = false;
+                world_renderer->second->OnPaint(
+                    pending_paint.pixels.data(),
+                    pending_paint.width,
+                    pending_paint.height
+                );
             }
         }
+        else
+        {
+            inst->view.UpdateTexture(pending_paint.pixels.data(), &rect, 1);
+        }
+
+        pending_paint.ready = false;
     }
 
     bool any_visible = false;
+
     for (auto& [id, browser] : browsers_)
     {
-        if (browser->visible && browser->mode == RenderMode::Overlay2D)
+        if (!browser)
+            continue;
+
+        if (!browser->visible)
+            continue;
+
+        // Overlay2D
+        if (browser->mode == RenderMode::Overlay2D)
         {
             browser->view.Draw();
             any_visible = true;
+            continue;
+        }
+
+        // World2D
+        if (browser->mode == RenderMode::World2D)
+        {
+            // Project world position to screen position (GTA native projection)
+            RwV3d worldPos{
+                browser->world2d.x,
+                browser->world2d.y,
+                browser->world2d.z + browser->world2d.offsetZ
+            };
+
+            RwV3d out{};
+            float w = 0.f, h = 0.f;
+
+            const bool ok = CSprite::CalcScreenCoors(worldPos, &out, &w, &h, true, true);
+            if (!ok || out.z <= 0.0f)
+                continue;
+
+            const auto r = browser->view.rect();
+            const int viewW = r.width;
+            const int viewH = r.height;
+
+            const int x = static_cast<int>(out.x - static_cast<float>(viewW) * browser->world2d.pivotX);
+            const int y = static_cast<int>(out.y - static_cast<float>(viewH) * browser->world2d.pivotY);
+
+            browser->view.SetPosition(x, y);
+            browser->view.Draw();
+            any_visible = true;
+            continue;
         }
     }
 
     return any_visible;
 }
+
 
 void BrowserManager::OnBeforeEntityRender(CEntity* entity)
 {
@@ -1029,6 +1208,23 @@ void BrowserManager::UpdateAudioSpatialization()
     }
 }
 
+void BrowserManager::SetKeyCaptureEnabled(bool enabled)
+{
+    key_capture_enabled_ = enabled;
+
+    LOG_INFO("[CEF] KeyCapture {}", enabled ? "enabled" : "disabled");
+}
+
+void BrowserManager::EnableKey(int key, bool enabled)
+{
+    if (key < 0 || key > 255)
+        return;
+
+    key_allowed_.set(static_cast<size_t>(key), enabled);
+
+    LOG_INFO("[CEF] Key {} {}", key, enabled ? "enabled" : "disabled");
+}
+
 void BrowserManager::OnDeviceLost()
 {
     // Stop CEF rendering during device reset
@@ -1084,6 +1280,33 @@ void BrowserManager::OnDeviceReset(IDirect3DDevice9* device)
 
 LRESULT BrowserManager::OnWndProcMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    if (msg == WM_KEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYDOWN || msg == WM_SYSKEYUP)
+    {
+        if (key_capture_enabled_ && network_.GetState() == ConnectionState::CONNECTED && !network_.IsNonCefServer())
+        {
+            const int vk = static_cast<int>(wParam) & 0xFF;
+            const bool down = (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN);
+            const bool repeat = down ? (((static_cast<uint32_t>(lParam) >> 30) & 1u) != 0u) : false;
+
+            if (vk >= 0 && vk <= 255 && key_allowed_.test(static_cast<size_t>(vk)))
+            {
+                // Ignore auto-repeat keydown to avoid spamming packets (send first down + up only).
+                if (!(down && repeat))
+                {
+                    ClientEmitEventPacket event;
+                    event.name = CefEvent::Client::PressKey;
+                    event.args.emplace_back(vk);
+                    event.args.emplace_back((int)((static_cast<uint32_t>(lParam) >> 16) & 0xFFu));
+                    event.args.emplace_back((int)GetCefEventFlags());
+                    event.args.emplace_back(down);
+                    event.args.emplace_back(repeat);
+
+                    network_.SendPacket(PacketType::ClientEmitEvent, event);
+                }
+            }
+        }
+    }
+
     auto* focused_inst = GetFocusedBrowser();
     if (!focused_inst || !focused_inst->browser)
         return false;

@@ -6,8 +6,12 @@ namespace CefEvent
     {
         inline constexpr const char* CreateBrowser = "CreateBrowser";
         inline constexpr const char* CreateWorldBrowser = "CreateWorldBrowser";
-        inline constexpr const char* DestroyBrowser = "DestroyBrowser";
+        inline constexpr const char* CreateWorld2DBrowser = "CreateWorld2DBrowser";
 
+        inline constexpr const char* SetWorld2DBrowserPos = "SetWorld2DBrowserPos";
+
+        inline constexpr const char* SetBrowserVisible = "SetBrowserVisible";
+        inline constexpr const char* DestroyBrowser = "DestroyBrowser";
         inline constexpr const char* ReloadBrowser = "ReloadBrowser";
         inline constexpr const char* FocusBrowser = "FocusBrowser";
 
@@ -22,10 +26,18 @@ namespace CefEvent
 
         inline constexpr const char* ToggleHudComponent = "ToggleHudComponent";
         inline constexpr const char* ToggleSpawnScreen = "ToggleSpawnScreen";
+
+        inline constexpr const char* ClearChat = "ClearChat";
+
+        inline constexpr const char* SetKeyCapture = "SetKeyCapture";
+        inline constexpr const char* EnableKey = "EnableKey";
     }
 
     namespace Client 
     {
         inline constexpr const char* BrowserCreateResult = "BrowserCreateResult";
+        inline constexpr const char* DownloadStart = "DownloadStart";
+        inline constexpr const char* DownloadFinish = "DownloadFinish";
+        inline constexpr const char* PressKey = "PressKey";
     }
 }

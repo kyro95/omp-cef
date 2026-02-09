@@ -31,6 +31,14 @@ void ResourceManager::Initialize()
 	std::filesystem::create_directories(base_cache_path_);
 }
 
+void ResourceManager::SetResourcesLoaderUiEnabled(bool enabled)
+{
+	resources_loader_ui_enabled_ = enabled;
+
+	if (download_dialog_)
+		download_dialog_->SetEnabled(enabled);
+}
+
 void ResourceManager::OnConnect(const std::string& ip, uint16_t port)
 {
 	server_ip_ = ip + "_" + std::to_string(port);

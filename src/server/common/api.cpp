@@ -28,7 +28,6 @@ void CefApi::AddResource(const std::string& resourceName)
     );
 }
 
-// native CEF_CreateBrowser(playerid, browserid, const url[], bool:focused, bool:controls_chat = true, Float:width = 0.0, Float:height = 0.0);
 void CefApi::CreateBrowser(int playerid, int browserid, const std::string& url, bool focused, bool controls_chat)
 {
     EmitEventPacket event;
@@ -42,7 +41,6 @@ void CefApi::CreateBrowser(int playerid, int browserid, const std::string& url, 
     plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
 }
 
-// native CEF_CreateWorldBrowser(playerid, browserid, const url[], const textureName[], Float:width, Float:height);
 void CefApi::CreateWorldBrowser(int playerid, int browserid, const std::string& url, const std::string& textureName, float width, float height)
 {
 	EmitEventPacket event;
@@ -53,6 +51,49 @@ void CefApi::CreateWorldBrowser(int playerid, int browserid, const std::string& 
 	event.args.emplace_back(std::string(textureName));
 	event.args.emplace_back(width);
 	event.args.emplace_back(height);
+
+	plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
+}
+
+void CefApi::CreateWorld2DBrowser(int playerid, int browserid, const std::string& url, float worldX, float worldY, float worldZ, float width, float height, float offsetZ, float pivotX, float pivotY)
+{
+	EmitEventPacket event;
+
+	event.name = CefEvent::Server::CreateWorld2DBrowser;
+	event.args.emplace_back(browserid);
+	event.args.emplace_back(std::string(url));
+	event.args.emplace_back(worldX);
+	event.args.emplace_back(worldY);
+	event.args.emplace_back(worldZ);
+	event.args.emplace_back(width);
+	event.args.emplace_back(height);
+	event.args.emplace_back(offsetZ);
+	event.args.emplace_back(pivotX);
+	event.args.emplace_back(pivotY);
+
+	plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
+} 
+
+void CefApi::SetWorld2DBrowserPos(int playerid, int browserid, float worldX, float worldY, float worldZ) 
+{
+	EmitEventPacket event;
+
+	event.name = CefEvent::Server::SetWorld2DBrowserPos;
+	event.args.emplace_back(browserid);
+	event.args.emplace_back(worldX);
+	event.args.emplace_back(worldY);
+	event.args.emplace_back(worldZ);
+
+	plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
+}
+
+void CefApi::SetBrowserVisible(int playerid, int browserid, bool visible)
+{
+	EmitEventPacket event;
+
+	event.name = CefEvent::Server::SetBrowserVisible;
+	event.args.emplace_back(browserid);
+	event.args.emplace_back(visible);
 
 	plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
 }
@@ -209,4 +250,36 @@ void CefApi::ToggleSpawnScreen(int playerid, bool toggle)
 	event.args.emplace_back(toggle);
 
 	plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
+}
+
+void CefApi::ClearChat(int playerid)
+{
+	LOG_DEBUG("ClearChat: playerid=%d", playerid);
+
+    EmitEventPacket event;
+    event.name = CefEvent::Server::ClearChat;
+
+    plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
+}
+
+
+void CefApi::SetKeyCapture(int playerid, bool enabled)
+{
+	LOG_DEBUG("SetKeyCapture: playerid=%d, enabled=%d", playerid, enabled);
+
+    EmitEventPacket event;
+    event.name = CefEvent::Server::SetKeyCapture;
+    event.args.emplace_back(enabled);
+
+    plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
+}
+
+void CefApi::EnableKey(int playerid, int key, bool enabled)
+{
+    EmitEventPacket event;
+    event.name = CefEvent::Server::EnableKey;
+    event.args.emplace_back(key);
+    event.args.emplace_back(enabled);
+
+    plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
 }

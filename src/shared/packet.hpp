@@ -40,6 +40,7 @@ enum class PacketType : uint8_t
 	FileData,
 
 	DownloadComplete,
+	PressKey,
 
 	EmitEvent,
 	EmitBrowserEvent,
@@ -85,6 +86,9 @@ struct JoinResponsePacket
 struct ServerConfigPacket
 {
 	std::vector<uint8_t> master_resource_key;
+
+	// When false, the client will download resources silently (no internal loader UI)
+	bool resources_loader_ui = true;
 };
 
 struct RequestFilesPacket

@@ -21,6 +21,25 @@ PAWN_NATIVE(Natives, CEF_CreateWorldBrowser, void(int playerid, int browserid, c
     CefApi::Instance()->CreateWorldBrowser(playerid, browserid, url, textureName, width, height);
 }
 
+PAWN_NATIVE(Natives, CEF_CreateWorld2DBrowser, void(
+    int playerid, int browserid, const std::string& url, 
+    float worldX, float worldY, float worldZ, 
+    float width, float height,
+    float offsetZ, float pivotX, float pivotY))
+{
+    CefApi::Instance()->CreateWorld2DBrowser(playerid, browserid, url, worldX, worldY, worldZ, width, height, offsetZ, pivotX, pivotY);
+}
+
+PAWN_NATIVE(Natives, CEF_SetWorld2DBrowserPos, void(int playerid, int browserid, float worldX, float worldY, float worldZ))
+{
+    CefApi::Instance()->SetWorld2DBrowserPos(playerid, browserid, worldX, worldY, worldZ);
+}
+
+PAWN_NATIVE(Natives, CEF_SetBrowserVisible, void(int playerid, int browserid, bool visible))
+{
+    CefApi::Instance()->SetBrowserVisible(playerid, browserid, visible);
+}
+
 PAWN_NATIVE(Natives, CEF_DestroyBrowser, void(int playerid, int browserid))
 {
     CefApi::Instance()->DestroyBrowser(playerid, browserid);
@@ -84,4 +103,19 @@ PAWN_NATIVE(Natives, CEF_ToggleHudComponent, void(int playerid, int componentid,
 PAWN_NATIVE(Natives, CEF_ToggleSpawnScreen, void(int playerid, bool visible))
 {
     CefApi::Instance()->ToggleSpawnScreen(playerid, visible);
+}
+
+PAWN_NATIVE(Natives, CEF_ClearChat, void(int playerid))
+{
+    CefApi::Instance()->ClearChat(playerid);
+}
+
+PAWN_NATIVE(Natives, CEF_SetKeyCapture, void(int playerid, bool enabled))
+{
+    CefApi::Instance()->SetKeyCapture(playerid, enabled);
+}
+
+PAWN_NATIVE(Natives, CEF_EnableKey, void(int playerid, int key, bool enabled))
+{
+    CefApi::Instance()->EnableKey(playerid, key, enabled);
 }

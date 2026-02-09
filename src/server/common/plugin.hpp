@@ -16,6 +16,7 @@ struct CefPluginOptions
 {
     CefLogLevel log_level = CefLogLevel::Info;
 	std::vector<uint8_t> master_resource_key = {};
+	bool resources_loader_ui = true;
 };
 
 struct RegisteredEvent
@@ -89,6 +90,7 @@ private:
 	Logger logger_;
 
 	std::vector<uint8_t> master_resource_key_;
+	bool resources_loader_ui_ = true;
 
 	asio::io_context io_context_;
 	asio::steady_timer transfer_timer_{ io_context_ };

@@ -144,6 +144,53 @@ native CEF_CreateBrowser(playerid, browserid, const url[], bool:focused, bool:co
 native CEF_CreateWorldBrowser(playerid, browserid, const url[], const textureName[], Float:width, Float:height);
 
 /**
+ * Creates a CEF browser rendered in 2D (overlay) whose screen position is automatically
+ * updated every frame from a 3D world position using GTA's World-to-Screen projection
+ * (CalcScreenCoors).
+ *
+ * This is ideal for "world tooltips" such as: "Press E to interact", item labels, etc.
+ *
+ * @param playerid      The ID of the player who will see this browser.
+ * @param browserid     A unique browser ID for this player (choose a constant like 9000 for tooltips).
+ * @param url           The URL to load.
+ * @param worldX        Initial target world X coordinate.
+ * @param worldY        Initial target world Y coordinate.
+ * @param worldZ        Initial target world Z coordinate.
+ * @param width         Browser width in pixels. If 0.0, a default/fallback size may be used.
+ * @param height        Browser height in pixels. If 0.0, a default/fallback size may be used.
+ * @param offsetZ       Extra vertical offset added by the client when projecting (e.g. to place above the head).
+ *                      Prefer using 0.0 here and handle per-interactable offset by adding it to worldZ in SetWorld2DBrowserPos().
+ * @param pivotX        Horizontal anchor (0.0..1.0). 0.5 = centered. 0.0 = left.
+ * @param pivotY        Vertical anchor (0.0..1.0). 1.0 = above the point (bottom-aligned). 0.0 = top.
+ */
+native CEF_CreateWorld2DBrowser(playerid, browserid, const url[], Float:worldX, Float:worldY, Float:worldZ, Float:width = 0.0, Float:height = 0.0, Float:offsetZ = 0.0, Float:pivotX = 0.0, Float:pivotY = 0.0);
+
+/**
+ * Updates the 3D world position used by a World2D browser created with CEF_CreateWorld2DBrowser().
+ * The plugin will project this position to 2D each frame and move the browser accordingly.
+ *
+ * @param playerid      The ID of the player who will see this browser.
+ * @param browserid     The World2D browser ID previously created.
+ * @param worldX        Target world X coordinate.
+ * @param worldY        Target world Y coordinate.
+ * @param worldZ        Target world Z coordinate.
+ */
+native CEF_SetWorld2DBrowserPos(playerid, browserid, Float:worldX, Float:worldY, Float:worldZ);
+
+/**
+ * Shows or hides an existing browser for a player without destroying it.
+ *
+ * Notes:
+ * - Hidden browsers are not drawn.
+ * - If a hidden browser was focused, it should lose focus to prevent stuck input (implementation-dependent).
+ *
+ * @param playerid      The ID of the player who will see this browser.
+ * @param browserid     The browser ID to show/hide.
+ * @param visible       true to show, false to hide.
+ */
+native CEF_SetBrowserVisible(playerid, browserid, bool:visible);
+
+/**
  * Destroys a browser instance for a specific player.
  *
  * @param playerid          The ID of the player.
@@ -290,11 +337,52 @@ native CEF_ToggleHudComponent(playerid, E_HUD_COMPONENT:componentid, bool:toggle
 native CEF_ToggleSpawnScreen(playerid, bool:toggle);
 
 /**
+ * Clears the in-game chat for a specific player.
+ *
+ * Why this native exists:
+ * Historically, many gamemodes "cleared" the chat by spamming a large number of empty
+ * messages using SendClientMessage (or similar loops). That approach is a hack:
+ * - It floods the chat buffer and can cause visible flicker / scroll jumps.
+ * - It produces unnecessary network traffic (many messages sent just to push old lines away).
+ *
+ * This native provides a clean and reliable way to clear the chat client-side without
+ * sending dozens of useless messages.
+ *
+ * @param playerid      The ID of the player whose chat will be cleared.
+ */
+native CEF_ClearChat(playerid);
+
+/**
  *
  * @param playerid      The ID of the player for whom the screen will be toggled.
  * @param toggle        Set to 'true' to show the chat input, 'false' to hide it.
 */
 // TODO: native CEF_ToggleChatInput(playerid, bool:toggle);
+
+/**
+ * Enables or disables forwarding of a specific key to OnCefPressKey for a player.
+ * Keys are Windows Virtual-Key codes (VK).
+ *
+ * @param playerid  The player ID.
+ * @param key       The Virtual-Key cod.
+ * @param enabled   true to forward this key, false to stop forwarding it.
+ */
+native CEF_EnableKey(playerid, key, bool:enabled);
+
+/**
+ * Enables or disables CEF keyboard event capture for a given player.
+ *
+ * When key capture is enabled, the client/plugin forwards keyboard events to the server
+ * via the callback `OnCefPressKey(playerid, key, scancode, modifiers, down, repeat)`.
+ *
+ * Important:
+ * - If disabled, no `OnCefPressKey` events will be emitted for the player.
+ * - You should usually keep this disabled by default to avoid unnecessary traffic.
+ *
+ * @param playerid  The ID of the player.
+ * @param enabled   true to capture/forward keyboard events to `OnCefPressKey`, false to stop.
+ */
+native CEF_SetKeyCapture(playerid, bool:enabled);
 
 /**
  * CALLBACKS
@@ -314,13 +402,27 @@ native CEF_ToggleSpawnScreen(playerid, bool:toggle);
 */
 forward OnCefInitialize(playerid, bool:success, E_CEF_INIT_REASON:reason, const message[]);
 
+/*
+ * Called when player start downloading resources.
+ *
+ * @param playerid      The ID of the player.
+ */
+forward OnCefDownloadStart(playerid);
+
+/*
+ * Called when player finish downloading resources.
+ *
+ * @param playerid      The ID of the player.
+ */
+forward OnCefDownloadFinish(playerid);
+
 /**
  * Called when a player's CEF client is fully ready (ressources downloaded ... etc)
  *
- * Useful when you want to start emit events (like for showing a login screen ...)
+ * Useful when you want to start creating browser or emit events (like for showing a login screen ...)
  *
  * @param playerid      The ID of the player.
-*/
+ */
 forward OnCefReady(playerid);
 
 /**
@@ -336,6 +438,20 @@ forward OnCefReady(playerid);
  * @param reason        A string explaining the result (e.g., "Successfully created" or "ID already in use").
 */
 forward OnCefBrowserCreated(playerid, browserid, bool:success, E_CEF_CREATE_STATUS:code, const reason[]);
+
+/**
+ * Called when the CEF input layer detects a keyboard event for a player.
+ *
+ * This callback is triggered by the CEF client/plugin when a key event is captured.
+ *
+ * @param playerid   The ID of the player who generated the key event.
+ * @param key        Virtual-key code of the key (Windows VK code).
+ * @param scancode   Hardware scan code for the key.
+ * @param modifiers  Bitmask of modifier keys currently held (Shift/Ctrl/Alt/etc.).
+ * @param down       True if the key is pressed; false if released.
+ * @param repeat     True if this key event is an auto-repeat; false otherwise.
+*/
+forward OnCefPressKey(playerid, key, scancode, modifiers, bool:down, bool:repeat);
 
 /**
  * Called when a player clicks on a world entity (player, vehicle, object) that

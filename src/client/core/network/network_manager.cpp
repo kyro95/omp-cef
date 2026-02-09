@@ -357,24 +357,16 @@ void NetworkManager::SendPacket(PacketType type, const PacketPayload& payload)
 			return;
 		}
 
-		LOG_DEBUG("[CLIENT] About to encrypt...");
-
 		std::vector<uint8_t> encrypted = EncryptPacket({ raw.begin(), raw.end() }, tx_key_);
-
-		LOG_DEBUG("[CLIENT] Encryption returned, size: {}", encrypted.size());
 
 		if (encrypted.empty()) {
 			LOG_ERROR("[CLIENT] Failed to encrypt packet");
 			return;
 		}
 
-		LOG_DEBUG("[CLIENT] About to ikcp_send...");
-
 		int sent = ikcp_send(kcp_instance_,
 			reinterpret_cast<const char*>(encrypted.data()),
 			static_cast<int>(encrypted.size()));
-
-		LOG_DEBUG("[CLIENT] ikcp_send returned: {}", sent);
 
 		if (sent < 0) {
 			LOG_ERROR("[CLIENT] ikcp_send failed with error: {}", sent);
@@ -382,8 +374,6 @@ void NetworkManager::SendPacket(PacketType type, const PacketPayload& payload)
 		}
 
 		ikcp_flush(kcp_instance_);
-
-		LOG_DEBUG("[CLIENT] KCP packet sent successfully");
 	}
 	else {
 		SendRaw(raw.data(), static_cast<int>(raw.size()));

@@ -13,6 +13,7 @@
 #include "network/network_manager.hpp"
 #include "ui/hud_manager.hpp"
 #include "system/logger.hpp"
+#include "samp/components/chat.hpp"
 #include "samp/components/netgame.hpp"
 #include "samp/common.hpp"
 #include "utf8.hpp"
@@ -74,6 +75,7 @@ void App::ResetSession()
     pending_creates_.clear();
     pending_emits_.clear();
     flushed_once_ = false;
+    pending_clear_chat_ = false;
 
     // Destroy all browsers
     browser_.DestroyAllBrowsers();
@@ -107,9 +109,13 @@ void App::FlushPendingIfReady()
             {
                 browser_.CreateBrowser(crate.id, crate.url, crate.focused, crate.controls_chat, crate.width, crate.height);
             }
-            else
+            else if (crate.kind == PendingCreate::Kind::World)
             {
                 browser_.CreateWorldBrowser(crate.id, crate.url, crate.textureName, crate.width, crate.height);
+            }
+            else // World2D
+            {
+                browser_.CreateWorld2DBrowser(crate.id, crate.url, crate.worldX, crate.worldY, crate.worldZ, crate.width, crate.height, crate.offsetZ, crate.pivotX, crate.pivotY);
             }
         }
     }
@@ -147,6 +153,7 @@ void App::Tick()
         if (can_attempt_connect && netGame)
         {
             const int mode = netGame->GetState();
+
             if (mode == GAME_MODE_CONNECTED)
             {
                 const int localPlayerId = netGame->GetLocalPlayerId();
@@ -206,6 +213,14 @@ void App::Tick()
 
     focus_.Update();
     browser_.RenderAll();
+    
+    if (pending_clear_chat_)
+    {
+        pending_clear_chat_ = false;
+
+        if (auto* chat = GetComponent<ChatComponent>())
+            chat->Clear();
+    }
 }
 
 void App::RemovePendingCreate(int id)
@@ -258,6 +273,32 @@ void App::QueueOrCreateWorld(int id, const std::string& url, const std::string& 
     browser_.CreateWorldBrowser(id, url, textureName, width, height);
 }
 
+void App::QueueOrCreateWorld2D(int id, const std::string& url, float worldX, float worldY, float worldZ, float width, float height, float offsetZ, float pivotX, float pivotY)
+{
+    if (!ResourcesReady())
+    {
+        PendingCreate pending_create;
+        pending_create.kind = PendingCreate::Kind::World2D;
+        pending_create.id = id;
+        pending_create.url = url;
+        pending_create.width = width;
+        pending_create.height = height;
+
+        pending_create.worldX = worldX;
+        pending_create.worldY = worldY;
+        pending_create.worldZ = worldZ;
+        pending_create.offsetZ = offsetZ;
+        pending_create.pivotX = pivotX;
+        pending_create.pivotY = pivotY;
+
+        pending_creates_.push_back(std::move(pending_create));
+        LOG_INFO("[CEF] CreateWorld2DBrowser queued (id={}, url={}) - waiting resources...", id, url.c_str());
+        return;
+    }
+
+    browser_.CreateWorld2DBrowser(id, url, worldX, worldY, worldZ, width, height, offsetZ, pivotX, pivotY);
+}
+
 void App::OnPacketReceived(const NetworkPacket& packet)
 {
     switch (packet.type)
@@ -266,6 +307,7 @@ void App::OnPacketReceived(const NetworkPacket& packet)
         {
             const auto& cfg = std::get<ServerConfigPacket>(packet.payload);
             resources_.SetMasterKey(cfg.master_resource_key);
+            resources_.SetResourcesLoaderUiEnabled(cfg.resources_loader_ui);
             resources_.MarkAsReadyToDownload();
             break;
         }
@@ -294,6 +336,34 @@ void App::OnPacketReceived(const NetworkPacket& packet)
                 float height = event.args[4].floatValue;
 
                 QueueOrCreateWorld(id, url, textureName, width, height);
+            }
+            else if (event.name == CefEvent::Server::CreateWorld2DBrowser && event.args.size() >= 6) {
+                int id = event.args[0].intValue;
+                const std::string& url = event.args[1].stringValue;
+                float worldX = event.args[2].floatValue;
+                float worldY = event.args[3].floatValue;
+                float worldZ = event.args[4].floatValue;
+                float width = event.args[5].floatValue;
+                float height = event.args[6].floatValue;
+                float offsetZ = event.args[7].floatValue;
+                float pivotX = event.args[8].floatValue;
+                float pivotY = event.args[9].floatValue;
+
+                QueueOrCreateWorld2D(id, url, worldX, worldY, worldZ, width, height, offsetZ, pivotX, pivotY);
+            } 
+            else if (event.name == CefEvent::Server::SetWorld2DBrowserPos && event.args.size() >= 4) {
+                int id = event.args[0].intValue;
+                float worldX = event.args[1].floatValue;
+                float worldY = event.args[2].floatValue;
+                float worldZ = event.args[3].floatValue;
+
+                browser_.SetWorld2DBrowserPos(id, worldX, worldY, worldZ);
+            }
+            else if (event.name == CefEvent::Server::SetBrowserVisible && event.args.size() >= 2) {
+                int id = event.args[0].intValue;
+                bool visible = event.args[1].boolValue;
+
+                browser_.SetBrowserVisible(id, visible);
             }
             else if (event.name == CefEvent::Server::DestroyBrowser && event.args.size() >= 1) {
                 const int id = event.args[0].intValue;
@@ -371,6 +441,23 @@ void App::OnPacketReceived(const NetworkPacket& packet)
                 bool toggle = event.args[0].boolValue;
 
                 hud_.SetClassSelectionVisible(toggle);
+            }
+            else if (event.name == CefEvent::Server::ClearChat)
+            {
+                pending_clear_chat_ = true;
+            }
+            else if (event.name == CefEvent::Server::SetKeyCapture && event.args.size() >= 1)
+            {
+                bool enabled = event.args[0].boolValue;
+
+                browser_.SetKeyCaptureEnabled(enabled);
+            }
+            else if (event.name == CefEvent::Server::EnableKey && event.args.size() >= 2)
+            {
+                int key = event.args[0].intValue;
+                bool enabled = event.args[1].boolValue;
+
+                browser_.EnableKey(key, enabled);
             }
 
             break;

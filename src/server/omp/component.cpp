@@ -38,6 +38,7 @@ void CefOmpComponent::onInit(IComponentList* components)
     CefPluginOptions options;
     options.log_level = debug_enabled_ ? CefLogLevel::Debug : CefLogLevel::Info;
     options.master_resource_key = master_resource_key_;
+    options.resources_loader_ui = resources_loader_ui_;
 
     auto bridge = CreateOmpPlatformBridge(core_, pawn_);
     plugin_->Initialize(std::move(bridge), cef_network_port_, options);
@@ -66,6 +67,7 @@ void CefOmpComponent::provideConfiguration(ILogger& logger, IEarlyConfig& config
 	if (defaults) {
 		config.setBool("cef.debug", false);
 		config.setString("cef.master_resource_key", "ThisIsA16ByteKey");
+        config.setBool("cef.resources_loader_ui", true);
 	}
 	else {
 		if (config.getType("cef.debug") == ConfigOptionType_None) {
@@ -74,6 +76,10 @@ void CefOmpComponent::provideConfiguration(ILogger& logger, IEarlyConfig& config
 
 		if (config.getType("cef.master_resource_key") == ConfigOptionType_None) {
 			config.setString("cef.master_resource_key", "ThisIsA16ByteKey");
+		}
+
+        if (config.getType("cef.resources_loader_ui") == ConfigOptionType_None) {
+			config.setBool("cef.resources_loader_ui", true);
 		}
 	}
 
@@ -93,6 +99,8 @@ void CefOmpComponent::provideConfiguration(ILogger& logger, IEarlyConfig& config
 		logger.printLn("[CEF SECURITY ERROR] Resource encryption will fail. Please fix your configuration.");
 		logger.printLn("===================================================================");
 	}
+
+    resources_loader_ui_ = config.getBool("cef.resources_loader_ui") ? *config.getBool("cef.resources_loader_ui") : true;
 }
 
 void CefOmpComponent::free()

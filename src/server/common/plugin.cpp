@@ -25,6 +25,7 @@ void CefPlugin::Initialize(std::unique_ptr<IPlatformBridge> bridge, uint16_t lis
 
 	bridge_ = std::move(bridge);
 	master_resource_key_ = options.master_resource_key;
+    resources_loader_ui_ = options.resources_loader_ui;
 
 	logger_.SetBridge(bridge_.get());
 	logger_.SetLevel(options.log_level);
@@ -361,6 +362,7 @@ void CefPlugin::HandleHandshakeFinalize(const asio::ip::udp::endpoint& from,
 
 	ServerConfigPacket config_packet;
 	config_packet.master_resource_key = master_resource_key_;
+    config_packet.resources_loader_ui = resources_loader_ui_;
 	SendPacketToPlayer(session->playerid, PacketType::ServerConfig, config_packet);
 
 	session->handshake_complete = true;
@@ -599,8 +601,6 @@ void CefPlugin::NotifyCefInitialize(std::shared_ptr<NetworkSession> session, boo
 
 void CefPlugin::NotifyCefReady(std::shared_ptr<NetworkSession> session)
 {
-    LOG_DEBUG("CefPlugin::NotifyCefReady");
-
 	if (!session || !bridge_)
 		return;
 
@@ -627,6 +627,34 @@ void CefPlugin::HandleClientEvent(int playerid, const ClientEmitEventPacket& pay
 			const std::string& reason = payload.args[2].stringValue;
 
 			bridge_->CallOnBrowserCreated(playerid, browserId, success, code, reason);
+		}
+
+		return;
+	}
+
+    if (payload.name == CefEvent::Client::DownloadStart)
+	{
+		bridge_->CallOnDownloadStart(playerid);
+		return;
+	}
+
+    if (payload.name == CefEvent::Client::DownloadFinish)
+	{
+		bridge_->CallOnDownloadFinish(playerid);
+		return;
+	}
+
+    if (payload.name == CefEvent::Client::PressKey)
+	{
+		if (payload.args.size() >= 5)
+		{
+			int key = payload.args[0].intValue;
+			int scancode = payload.args[1].intValue;
+			int modifiers = payload.args[2].intValue;
+			bool down = payload.args[3].boolValue;
+			bool repeat = payload.args[4].boolValue;
+
+			bridge_->CallOnPressKey(playerid, key, scancode, modifiers, down, repeat);
 		}
 
 		return;

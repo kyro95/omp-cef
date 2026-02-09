@@ -13,6 +13,7 @@
 #include "include/wrapper/cef_helpers.h"
 
 #include "system/logger.hpp"
+#include "shared/events.hpp"
 
 // Internal loader browser (reserved id)
 static constexpr int kLoaderBrowserId = 999999;
@@ -29,13 +30,31 @@ DownloadDialog::DownloadDialog(NetworkManager* net, HudManager* hud, Samp* samp,
 {
 }
 
+
+void DownloadDialog::SetEnabled(bool enabled)
+{
+    enabled_ = enabled;
+
+    // If UI is disabled while a loader is visible, close it immediately.
+    if (!enabled_ && loader_visible_)
+    {
+        HideLoader();
+    }
+}
+
 void DownloadDialog::EnsureLoaderVisible()
 {
+    if (!enabled_)
+        return;
+
     if (!browser_)
         return;
 
     if (browser_->GetBrowserInstance(kLoaderBrowserId))
+    {
+        loader_visible_ = true;
         return;
+    }
 
     if (hud_) {
         hud_->ToggleComponent(EHudComponent::ALL, false);
@@ -44,6 +63,7 @@ void DownloadDialog::EnsureLoaderVisible()
 
     // Create internal loader page (no focus)
     browser_->CreateBrowser(kLoaderBrowserId, kLoaderUrl, false, false, -1.f, -1.f);
+    loader_visible_ = true;
 
     // Push manifest info right away
     JsCall("window.__ompcef && window.__ompcef.manifest(" +
@@ -55,17 +75,23 @@ void DownloadDialog::HideLoader()
     if (!browser_)
         return;
 
-    if (browser_->GetBrowserInstance(kLoaderBrowserId))
+    const bool has_loader = (browser_->GetBrowserInstance(kLoaderBrowserId) != nullptr);
+    if (has_loader)
         browser_->DestroyBrowser(kLoaderBrowserId);
 
-    if (hud_) {
+    if (hud_ && (loader_visible_ || has_loader)) {
         hud_->ToggleComponent(EHudComponent::ALL, true);
         // hud_->SetClassSelectionVisible(true);
     }
+
+    loader_visible_ = false;
 }
 
 void DownloadDialog::JsCall(const std::string& js)
 {
+    if (!enabled_)
+        return;
+
     if (!browser_)
         return;
 
@@ -91,6 +117,10 @@ void DownloadDialog::Start(std::vector<std::pair<std::string, size_t>> files)
     for (const auto& f : files_)
         total_bytes_ += (uint64_t)f.second;
 
+    ClientEmitEventPacket event;
+    event.name = CefEvent::Client::DownloadStart;
+    network_->SendPacket(PacketType::ClientEmitEvent, event);
+
     last_ui_sent_ms_ = 0;
 
     EnsureLoaderVisible();
@@ -100,6 +130,9 @@ void DownloadDialog::Start(std::vector<std::pair<std::string, size_t>> files)
 
 void DownloadDialog::Update(uint32_t index, uint64_t received)
 {
+    if (!enabled_)
+        return;
+
     if (!active_)
         return;
 
@@ -146,14 +179,22 @@ void DownloadDialog::Finish()
 
     active_ = false;
 
-    JsCall("window.__ompcef && window.__ompcef.done();");
+    
+    ClientEmitEventPacket event;
+    event.name = CefEvent::Client::DownloadFinish;
+    network_->SendPacket(PacketType::ClientEmitEvent, event);
 
-    // Let user see 100% shortly, then hide
-    CefPostDelayedTask(TID_UI,
-        base::BindOnce([](DownloadDialog* self) { 
-            self->HideLoader(); 
-        }, base::Unretained(this)),
-        700);
+    if (enabled_)
+    {
+        JsCall("window.__ompcef && window.__ompcef.done();");
+
+        // Let user see 100% shortly, then hide
+        CefPostDelayedTask(TID_UI,
+            base::BindOnce([](DownloadDialog* self) { 
+                self->HideLoader(); 
+            }, base::Unretained(this)),
+            700);
+    }
 
     LOG_INFO("[DownloadDialog] Finished.");
 }

@@ -105,6 +105,7 @@ inline bool SerializePacket(const NetworkPacket& packet, std::string& out)
 			}
 			else if constexpr (std::is_same_v<T, ServerConfigPacket>) {
 				WriteBytes(os, arg.master_resource_key);
+				os.put(arg.resources_loader_ui ? 1 : 0);
 			}
 			else if constexpr (std::is_same_v<T, RequestFilesPacket>) {
 				uint16_t count = static_cast<uint16_t>(arg.files.size());
@@ -293,6 +294,13 @@ inline bool DeserializePacket(const char* data, size_t size, NetworkPacket& out)
 
 			if (!ReadBytes(is, packet.master_resource_key))
 				return false;
+
+			char b = 0;
+			is.get(b);
+			if (!is.good())
+				return false;
+
+			packet.resources_loader_ui = (b != 0);
 
 			out.payload = packet;
 			break;

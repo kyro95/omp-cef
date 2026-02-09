@@ -48,9 +48,13 @@ PLUGIN_EXPORT bool PLUGIN_CALL Load(void** ppData)
     if (master_key.size() > 16) 
         master_key.resize(16);
 
+    std::string loader_ui_str = config.GetString("cef_resources_loader_ui", "1");
+    bool resources_loader_ui = (std::stoi(loader_ui_str) != 0);
+
     CefPluginOptions options;
     options.log_level = debug_enabled_ ? CefLogLevel::Debug : CefLogLevel::Info;
     options.master_resource_key = master_key;
+    options.resources_loader_ui = resources_loader_ui;
 
     auto bridge = CreateSampPlatformBridge();
     plugin_->Initialize(std::move(bridge), cef_network_port, options);

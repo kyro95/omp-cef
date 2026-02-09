@@ -41,6 +41,11 @@ public:
 
 	void Initialize();
 
+	// Controls the internal CEF loader UI shown during resource downloads.
+	// When false, downloads occur silently without opening the internal loader browser.
+	void SetResourcesLoaderUiEnabled(bool enabled);
+	bool IsResourcesLoaderUiEnabled() const { return resources_loader_ui_enabled_; }
+
 	void OnConnect(const std::string& ip, uint16_t port);
 	void OnDisconnect();
 
@@ -57,7 +62,6 @@ public:
 		std::vector<uint8_t>& outContent);
 
 	DownloadState GetState() const { return state_; }
-
 private:
 	bool LoadPakIntoVFS(const std::string& resourceName, const std::string& pakPath);
 
@@ -83,6 +87,7 @@ private:
 	Gta& gta_;
 	NetworkManager* net_ = nullptr;
 	DownloadDialog* download_dialog_ = nullptr;
+	bool resources_loader_ui_enabled_ = true;
 
 	std::string base_cache_path_;
 	std::string server_cache_path_;

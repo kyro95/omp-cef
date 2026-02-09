@@ -100,6 +100,60 @@ void OmpPlatformBridge::CallOnBrowserCreated(int playerid, int browserId, bool s
     }
 }
 
+void OmpPlatformBridge::CallOnDownloadStart(int playerid)
+{
+    if (!pawn_) 
+        return;
+
+    auto call = [&](IPawnScript* script) {
+        if (!script) 
+            return;
+
+        script->Call("OnCefDownloadStart", DefaultReturnValue_True, playerid);
+    };
+
+    call(pawn_->mainScript());
+    for (IPawnScript* script : pawn_->sideScripts()) {
+        call(script);
+    }
+}
+
+void OmpPlatformBridge::CallOnDownloadFinish(int playerid)
+{
+    if (!pawn_) 
+        return;
+
+    auto call = [&](IPawnScript* script) {
+        if (!script) 
+            return;
+
+        script->Call("OnCefDownloadFinish", DefaultReturnValue_True, playerid);
+    };
+
+    call(pawn_->mainScript());
+    for (IPawnScript* script : pawn_->sideScripts()) {
+        call(script);
+    }
+}
+
+void OmpPlatformBridge::CallOnPressKey(int playerid, int key, int scancode, int modifiers, bool down, bool repeat)
+{
+    if (!pawn_) 
+        return;
+
+    auto call = [&](IPawnScript* script) {
+        if (!script) 
+            return;
+
+        script->Call("OnCefPressKey", DefaultReturnValue_True, playerid, key, scancode, modifiers, down, repeat);
+    };
+
+    call(pawn_->mainScript());
+    for (IPawnScript* script : pawn_->sideScripts()) {
+        call(script);
+    }
+}
+
 std::string OmpPlatformBridge::GetPlayerAddressIp(int playerid)
 {
     if (core_)

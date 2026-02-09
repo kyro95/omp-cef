@@ -17,6 +17,9 @@ public:
 
     void CallPawnPublic(const std::string& name, const std::vector<Argument>& args) override;
     void CallOnBrowserCreated(int playerid, int browserid, bool success, int code, const std::string& reason) override;
+    void CallOnDownloadStart(int playerid) override;
+    void CallOnDownloadFinish(int playerid) override;
+    void CallOnPressKey(int playerid, int key, int scancode, int modifiers, bool down, bool repeat) override;
 
     std::string GetPlayerAddressIp(int playerid) override;
     void KickPlayer(int playerid) override;

@@ -21,6 +21,9 @@ public:
     void AddResource(const std::string& resourceName);
     void CreateBrowser(int playerid, int browserid, const std::string& url, bool focused, bool controls_chat);
     void CreateWorldBrowser(int playerid, int browserid, const std::string& url, const std::string& textureName, float width, float height);
+    void CreateWorld2DBrowser(int playerid, int browserid, const std::string& url, float worldX, float worldY, float worldZ, float width, float height, float offsetZ, float pivotX, float pivotY);
+    void SetWorld2DBrowserPos(int playerid, int browserid, float worldX, float worldY, float worldZ);
+    void SetBrowserVisible(int playerid, int browserid, bool visible);
     void DestroyBrowser(int playerid, int browserid);
     void RegisterEvent(const std::string& name, const std::string& callback, const std::vector<ArgumentType>& signature);
     void EmitEvent(int playerid, int browserid, const std::string& name, const std::vector<Argument>& args);
@@ -38,6 +41,10 @@ public:
     void ToggleHudComponent(int playerid, int componentid, bool toggle);
     void ToggleSpawnScreen(int playerid, bool toggle);
 
+    void ClearChat(int playerid);
+
+    void SetKeyCapture(int playerid, bool enabled);
+    void EnableKey(int playerid, int key, bool enabled);
 private:
     CefPlugin& plugin_;
 
