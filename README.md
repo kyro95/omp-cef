@@ -27,6 +27,12 @@
 - 0.3.7-R5-1
 - 0.3.DL-R1
 
+## Games tested
+
+- Clean GTA San Andreas
+- GTA San Andreas with *SA Essentials*
+- GTA San Andreas with *SAMP Addons 2.7*
+  
 ---
 
 ## Repository layout
