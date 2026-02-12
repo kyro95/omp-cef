@@ -3,6 +3,8 @@
 #include <asio.hpp>
 #include <asio/steady_timer.hpp>
 #include <functional>
+#include <atomic>
+#include <array>
 
 using PacketHandler = std::function<void(const asio::ip::udp::endpoint&, const char*, int)>;
 

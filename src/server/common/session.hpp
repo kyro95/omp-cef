@@ -7,6 +7,8 @@
 #include <vector>
 #include <cstdint>
 #include <memory>
+#include <atomic>
+#include <functional>
 #include <asio.hpp>
 #include <kcp/ikcp.h>
 
@@ -37,11 +39,11 @@ struct NetworkSession
 	asio::ip::udp::endpoint address;
 	ikcpcb* kcp_instance = nullptr;
 
-	HandshakeStatus handshake_status = HandshakeStatus::NONE;
-	bool handshake_complete = false;
-	bool cef_init_notified = false;
-	bool cef_success = false;
-	std::atomic<bool> cef_init_timer_started{ false };
+	HandshakeStatus handshake_status{HandshakeStatus::NONE};
+	std::atomic_bool handshake_complete{false};
+	std::atomic_bool cef_init_timer_started{false};
+	bool cef_init_notified{false};
+	bool cef_success{false};
 
 	std::vector<uint8_t> rx_key;
 	std::vector<uint8_t> tx_key;

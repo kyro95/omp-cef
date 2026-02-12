@@ -1,9 +1,9 @@
 #include "natives.hpp"
 #include "api.hpp"
 
-PAWN_NATIVE(Natives, CEF_PlayerHasPlugin, bool(int playerid))
+PAWN_NATIVE(Natives, CEF_PlayerHasPlugin, int(int playerid))
 {
-    return CefApi::Instance()->PlayerHasPlugin(playerid);
+    return CefApi::Instance()->PlayerHasPlugin(playerid) ? 1 : 0;
 }
 
 PAWN_NATIVE(Natives, CEF_AddResource, void(const std::string& resourceName))

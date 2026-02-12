@@ -18,16 +18,29 @@ void NetworkSessionManager::SetSender(std::function<void(const asio::ip::udp::en
 
 void NetworkSessionManager::RegisterPlayer(int playerid)
 {
-	std::lock_guard<std::mutex> lock(mutex_);
-	if (player_sessions_.find(playerid) == player_sessions_.end())
-	{
-		auto session = std::make_shared<NetworkSession>();
+    std::lock_guard<std::mutex> lock(mutex_);
 
-		session->playerid = playerid;
-		session->send_fn = send_fn_;
+    std::shared_ptr<NetworkSession> session;
 
-		player_sessions_[playerid] = session;
-	}
+    auto it = player_sessions_.find(playerid);
+    if (it == player_sessions_.end())
+    {
+        session = std::make_shared<NetworkSession>();
+        player_sessions_[playerid] = session;
+    }
+    else
+    {
+        session = it->second;
+    }
+
+    session->playerid = playerid;
+    session->send_fn = send_fn_;
+    session->handshake_status = HandshakeStatus::NONE;
+    session->handshake_complete = false;
+    session->cef_init_notified = false;
+    session->cef_success = false;
+    session->cef_init_timer_started = false;
+    session->is_download_paused = false;
 }
 
 void NetworkSessionManager::RemovePlayer(int playerid)
@@ -48,18 +61,6 @@ void NetworkSessionManager::RemovePlayer(int playerid)
         player_sessions_.erase(it);
     }
 }
-
-/*void NetworkSessionManager::UpdateAllKcpInstances(uint32_t now_ms)
-{
-	std::lock_guard<std::mutex> lock(mutex_);
-
-	for (auto& [playerid, session] : player_sessions_) {
-		if (session && session->kcp_instance &&
-			session->handshake_status == HandshakeStatus::CONNECTED) {
-			ikcp_update(session->kcp_instance, now_ms);
-		}
-	}
-}*/
 
 void NetworkSessionManager::UpdateAllKcpInstances(uint32_t now_ms)
 {
@@ -97,6 +98,12 @@ std::shared_ptr<NetworkSession> NetworkSessionManager::GetOrCreateSession(int pl
 
 		session->playerid = playerid;
 		session->send_fn = send_fn_;
+        session->handshake_status = HandshakeStatus::NONE;
+        session->handshake_complete = false;
+        session->cef_init_notified = false;
+        session->cef_success = false;
+        session->cef_init_timer_started = false;
+        session->is_download_paused = false;
 
 		player_sessions_[playerid] = session;
 
