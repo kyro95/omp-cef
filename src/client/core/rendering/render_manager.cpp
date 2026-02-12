@@ -56,23 +56,38 @@ namespace
         return true;
     }
 
-    HWND CreateDummyWindow() noexcept
+    static HWND CreateDummyWindow() noexcept
     {
         constexpr const char* className = "omp_cef_d3d9_dummy";
 
         WNDCLASSEXA wc{};
-        wc.cbSize = sizeof(wc);
-        wc.lpfnWndProc = DefWindowProcA;
-        wc.hInstance = GetModuleHandleA(nullptr);
+        wc.cbSize        = sizeof(wc);
+        wc.lpfnWndProc   = DefWindowProcA;
+        wc.hInstance     = GetModuleHandleA(nullptr);
         wc.lpszClassName = className;
 
         RegisterClassExA(&wc);
 
         HWND hwnd = CreateWindowExA(
-            0, className, "omp-cef-d3d9-dummy",
-            WS_OVERLAPPEDWINDOW,
-            0, 0, 16, 16,
-            nullptr, nullptr, wc.hInstance, nullptr);
+            WS_EX_NOACTIVATE |
+            WS_EX_TOOLWINDOW |
+            WS_EX_LAYERED |
+            WS_EX_TRANSPARENT,
+            className,
+            "",
+            WS_POPUP,
+            -32000, -32000,
+            1, 1,
+            nullptr, nullptr,
+            wc.hInstance,
+            nullptr
+        );
+
+        if (hwnd)
+        {
+            SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);
+            ShowWindow(hwnd, SW_HIDE);
+        }
 
         return hwnd;
     }
@@ -248,10 +263,6 @@ void RenderManager::PollD3D() noexcept
     if (!initialized_)
         return;
 
-    // Already captured
-    if (fast_device_.load(std::memory_order_acquire) != nullptr)
-        return;
-
     const uint64_t now = ::GetTickCount64();
     if (now - last_poll_ms_ < 250)
         return;
@@ -289,7 +300,8 @@ void RenderManager::DetachDevice() noexcept
     device_parameters_ = {};
 
     fast_device_.store(nullptr, std::memory_order_release);
-    device_initialized_.store(false, std::memory_order_release);
+    capture_rank_.store(0, std::memory_order_release);
+    initialized_device_.store(nullptr, std::memory_order_release);
 
     reset_status_ = false;
     scene_status_ = false;
@@ -377,7 +389,11 @@ bool RenderManager::TryCaptureDeviceFromPointer(IDirect3DDevice9* device) noexce
     if (!device)
         return false;
 
-    if (fast_device_.load(std::memory_order_acquire) != nullptr)
+    IDirect3DDevice9* current = fast_device_.load(std::memory_order_acquire);
+    const int current_rank = capture_rank_.load(std::memory_order_acquire);
+
+    // Same device already captured
+    if (current == device && current_rank >= 1)
         return false;
 
     D3DPRESENT_PARAMETERS pp{};
@@ -386,17 +402,28 @@ bool RenderManager::TryCaptureDeviceFromPointer(IDirect3DDevice9* device) noexce
     if (!IsGameDeviceCandidate(&pp, nullptr))
         return false;
 
+    // Notify destroy when switching devices
+    if (current && current != device)
+    {
+        if (OnDeviceDestroy)
+            OnDeviceDestroy();
+    }
+
     AttachDevice(nullptr, device, pp);
+    capture_rank_.store(1, std::memory_order_release);
 
     // Fire OnDeviceInitialize once
-    bool expected = false;
-    if (device_initialized_.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+    IDirect3DDevice9* prevInit = initialized_device_.exchange(device, std::memory_order_acq_rel);
+    if (prevInit != device)
     {
         if (OnDeviceInitialize)
             OnDeviceInitialize(nullptr, device, pp);
-
-        LOG_INFO("[D3D9] Captured device via PollD3D fallback: device={}", (void*)device);
     }
+
+    if (!current)
+        LOG_INFO("[D3D9] Captured device via PollD3D fallback: device={}", (void*)device);
+    else if (current != device)
+        LOG_WARN("[D3D9] Game device changed (PollD3D): old={}, new={}", (void*)current, (void*)device);
 
     return true;
 }
@@ -406,7 +433,11 @@ bool RenderManager::TryCaptureDeviceFromPresent(IDirect3DDevice9* device, HWND p
     if (!device)
         return false;
 
-    if (fast_device_.load(std::memory_order_acquire) != nullptr)
+    IDirect3DDevice9* current = fast_device_.load(std::memory_order_acquire);
+    const int current_rank = capture_rank_.load(std::memory_order_acquire);
+
+    // Already the confirmed game device
+    if (current == device && current_rank >= 2)
         return false;
 
     D3DPRESENT_PARAMETERS pp{};
@@ -415,17 +446,27 @@ bool RenderManager::TryCaptureDeviceFromPresent(IDirect3DDevice9* device, HWND p
     if (!IsGameDeviceCandidate(&pp, presentHwnd))
         return false;
 
-    AttachDevice(nullptr, device, pp);
+    // Upgrade / switch to this device
+    if (current && current != device)
+    {
+        if (OnDeviceDestroy)
+            OnDeviceDestroy();
+    }
 
-    bool expected = false;
-    if (device_initialized_.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+    AttachDevice(nullptr, device, pp);
+    capture_rank_.store(2, std::memory_order_release);
+
+    IDirect3DDevice9* prevInit = initialized_device_.exchange(device, std::memory_order_acq_rel);
+    if (prevInit != device)
     {
         if (OnDeviceInitialize)
             OnDeviceInitialize(nullptr, device, pp);
-
-        LOG_INFO("[D3D9] Captured device via Present: device={}, hwnd={}", (void*)device, (void*)presentHwnd);
     }
 
+    if (current && current != device)
+        LOG_WARN("[D3D9] Game device upgraded via Present: old={}, new={}, hwnd={}", (void*)current, (void*)device, (void*)presentHwnd);
+
+    LOG_INFO("[D3D9] Captured device via Present: device={}, hwnd={}", (void*)device, (void*)presentHwnd);
     return true;
 }
 
@@ -459,10 +500,10 @@ void RenderManager::EnsureDeviceHooksInstalled(IDirect3DDevice9* device) noexcep
     }
 
     // Uninstall old hooks (if any)
-    hooks_->Uninstall(hookNameReset);
-    hooks_->Uninstall(hookNameBeginScene);
-    hooks_->Uninstall(hookNameEndScene);
-    hooks_->Uninstall(hookNamePresent);
+    // hooks_->Uninstall(hookNameReset);
+    // hooks_->Uninstall(hookNameBeginScene);
+    // hooks_->Uninstall(hookNameEndScene);
+    // hooks_->Uninstall(hookNamePresent);
 
     device_hooks_installed_ = false;
 

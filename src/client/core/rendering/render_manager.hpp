@@ -134,9 +134,9 @@ private:
     IDirect3DDevice9* device_ = nullptr;
     D3DPRESENT_PARAMETERS device_parameters_{};
 
-    // Fast-path for detours (avoid locking on every frame)
     std::atomic<IDirect3DDevice9*> fast_device_{ nullptr };
-    std::atomic<bool> device_initialized_{ false };
+    std::atomic<int> capture_rank_{ 0 };
+    std::atomic<IDirect3DDevice9*> initialized_device_{ nullptr };
 
     // Hook state
     bool device_hooks_installed_ = false;
