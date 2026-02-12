@@ -1,7 +1,10 @@
 project(ServerOmp LANGUAGES CXX)
 
 # You can change this path for development
-set(DLL_DEPLOY_DIR "${CMAKE_SOURCE_DIR}/tests/omp/components")
+#set(DLL_DEPLOY_DIR "${CMAKE_SOURCE_DIR}/tests/omp/components")
+#set(INC_DEPLOY_DIR "${CMAKE_SOURCE_DIR}/tests/omp/qawno/include")
+
+set(DLL_DEPLOY_DIR "E:/multiplayer/aurora-mp/rpg/env/components")
 set(INC_DEPLOY_DIR "${CMAKE_SOURCE_DIR}/tests/omp/qawno/include")
 
 file(GLOB_RECURSE SERVER_OMP_FILES
@@ -17,7 +20,7 @@ add_library(${PROJECT_NAME}
 
 add_win_version_resource(
     ${PROJECT_NAME}
-        VERSION "1.0.4.0"
+        VERSION "1.1.0.0"
         COMPANY "aurora-mp"
         PRODUCT_NAME "CEF Server Component"
         FILE_DESC "CEF Component for open.mp"

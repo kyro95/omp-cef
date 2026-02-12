@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 project(Loader LANGUAGES CXX)
 
 # You can change this path for development if you want to avoid manually copying and pasting the file (cef.asi)
-set(ASI_DEPLOY_DIR "D:/Program Files (x86)/Rockstar Games/GTA San Andreas")
+set(ASI_DEPLOY_DIR "D:/Program Files (x86)/Rockstar Games/GTA San Andreas - Samp Addons")
 
 add_library(${PROJECT_NAME} SHARED main.cpp)
 

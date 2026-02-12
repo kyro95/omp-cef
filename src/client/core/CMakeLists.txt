@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # You can change this path for development if you want to avoid manually copying and pasting the file (renderer.exe)
-set(DLL_DEPLOY_DIR "D:/Program Files (x86)/Rockstar Games/GTA San Andreas/cef")
+set(DLL_DEPLOY_DIR "D:/Program Files (x86)/Rockstar Games/GTA San Andreas - Samp Addons/cef")
 
 # Deps
 #find_package(asio CONFIG REQUIRED)
@@ -31,7 +31,7 @@ add_library(${PROJECT_NAME} SHARED ${CLIENT_SRC})
 
 add_win_version_resource(
     ${PROJECT_NAME}
-        VERSION "1.0.5.0"
+        VERSION "1.1.0.0"
         COMPANY "aurora-mp"
         PRODUCT_NAME "CEF Client Plugin"
         FILE_DESC "CEF Client DLL for SA-MP/open.mp"
