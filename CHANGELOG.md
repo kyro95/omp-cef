@@ -1,4 +1,39 @@
 
+## [1.1.0](https://github.com/aurora-mp/omp-cef/compare/v1.0.5..v1.1.0) (2026-02-12)
+
+### 🧹 Chore
+
+- *(client)* Improve render_manager - ([e99fbb6](https://github.com/aurora-mp/omp-cef/commit/e99fbb6b8d80b910c143fd0dadc79558e22de7c2))
+- *(client)* Improve/fix plugin runtime initialization - ([0cfdf78](https://github.com/aurora-mp/omp-cef/commit/0cfdf7899d7b2bcce473055c501fc97837d09e9b))
+- Update README - ([7bee73f](https://github.com/aurora-mp/omp-cef/commit/7bee73ffad33c18afb6f6e62274da04143b7d0ba))
+- Bump next version - ([97ac8a7](https://github.com/aurora-mp/omp-cef/commit/97ac8a7d1f3972d90094ad64ba2702f7cfb491e3))
+
+### ✨ Features
+
+- *(client)* Add `cef.exitGame` - ([c684e21](https://github.com/aurora-mp/omp-cef/commit/c684e21eefd4528d4bc1c2c764c2b302cc81eac6))
+- *(client)* Add `cef.set_focus` - ([bba9a73](https://github.com/aurora-mp/omp-cef/commit/bba9a7335461d0de08eb925a5e357394252a02c6))
+- Add `CEF_ToggleChatInput` - ([5bab951](https://github.com/aurora-mp/omp-cef/commit/5bab951a2a47ff92f7ba7dbebd4cbdb09d18677b))
+- Add `CEF_ExitGame` #8 - ([9f510a4](https://github.com/aurora-mp/omp-cef/commit/9f510a4926a61dfa20e6145ab95262cae66bbe24))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+- New features added - ([00027fe](https://github.com/aurora-mp/omp-cef/commit/00027fedaeec860139003c79038d15759f0bef4a))
+
+### 🐛 Bug Fixes
+
+- *(client)* Fix #11 - ([0707307](https://github.com/aurora-mp/omp-cef/commit/070730766faf81d9c1f0fb2566ae7f417d5a97c3))
+- *(client)* Improve runtime, possible crash fixes (SAMP Addons) - ([429de24](https://github.com/aurora-mp/omp-cef/commit/429de24eb3bc76cd09771b5896d4eb7b2f1ac210))
+- *(server)* Fix #10 - ([99870f0](https://github.com/aurora-mp/omp-cef/commit/99870f0a9b9c8c4d8ed97eb2fbc7a8ef785e6523))
+
+
+
+
 ## [1.0.5](https://github.com/aurora-mp/omp-cef/compare/v1.0.4..v1.0.5) (2026-02-05)
 
 ### ✨ Features
