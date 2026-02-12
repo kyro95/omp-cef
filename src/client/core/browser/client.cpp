@@ -147,6 +147,7 @@ bool BrowserClient::OnProcessMessageReceived(CefRefPtr<CefBrowser> /*browser*/,
     CEF_REQUIRE_UI_THREAD();
 
     const std::string msg_name = message->GetName();
+
     if (msg_name == "emit_event")
     {
         CefRefPtr<CefListValue> args = message->GetArgumentList();
@@ -181,6 +182,14 @@ bool BrowserClient::OnProcessMessageReceived(CefRefPtr<CefBrowser> /*browser*/,
         }
 
 		network_.SendPacket(PacketType::ClientEmitEvent, event_packet);
+        return true;
+    }
+
+    if (message->GetName() == "cef_set_focus")
+    {
+        const bool hasFocus = message->GetArgumentList()->GetBool(0);
+        manager_.FocusBrowser(browserId_, hasFocus);
+
         return true;
     }
 

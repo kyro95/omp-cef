@@ -214,6 +214,23 @@ public:
             exception = "Invalid arguments to cef.off(eventName[, callback])";
             return true;
         }
+        else if (name == "set_focus")
+        {
+            if (arguments.size() < 1 || !arguments[0]->IsBool())
+            {
+                exception = "Invalid arguments to cef.set_focus(hasFocus: boolean)";
+                return true;
+            }
+
+            const bool hasFocus = arguments[0]->GetBoolValue();
+
+            CefRefPtr<CefProcessMessage> msg = CefProcessMessage::Create("cef_set_focus");
+            CefRefPtr<CefListValue> list = msg->GetArgumentList();
+            list->SetBool(0, hasFocus);
+
+            CefV8Context::GetCurrentContext()->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+            return true;
+        }
 
         return false;
     }
@@ -235,8 +252,9 @@ public:
         CefRefPtr<CefV8Handler> handler = new V8HandlerImpl();
 
         cefObj->SetValue("emit", CefV8Value::CreateFunction("emit", handler), V8_PROPERTY_ATTRIBUTE_NONE);
-        cefObj->SetValue("on",   CefV8Value::CreateFunction("on",   handler), V8_PROPERTY_ATTRIBUTE_NONE);
-        cefObj->SetValue("off",  CefV8Value::CreateFunction("off",  handler), V8_PROPERTY_ATTRIBUTE_NONE);
+        cefObj->SetValue("on", CefV8Value::CreateFunction("on", handler), V8_PROPERTY_ATTRIBUTE_NONE);
+        cefObj->SetValue("off", CefV8Value::CreateFunction("off", handler), V8_PROPERTY_ATTRIBUTE_NONE);
+        cefObj->SetValue("set_focus", CefV8Value::CreateFunction("set_focus", handler), V8_PROPERTY_ATTRIBUTE_NONE);
 
         global->SetValue("cef", cefObj, V8_PROPERTY_ATTRIBUTE_NONE);
     }
