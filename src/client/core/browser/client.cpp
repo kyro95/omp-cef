@@ -193,6 +193,13 @@ bool BrowserClient::OnProcessMessageReceived(CefRefPtr<CefBrowser> /*browser*/,
         return true;
     }
 
+    if (message->GetName() == "cef_exit_game")
+    {
+        manager_.ExitGame();
+
+        return true;
+    }
+
     return false;
 }
 

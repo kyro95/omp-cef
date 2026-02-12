@@ -231,6 +231,13 @@ public:
             CefV8Context::GetCurrentContext()->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
             return true;
         }
+        else if (name == "exitGame")
+        {
+            CefRefPtr<CefProcessMessage> msg = CefProcessMessage::Create("cef_exit_game");
+
+            CefV8Context::GetCurrentContext()->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
+            return true;
+        }
 
         return false;
     }
@@ -255,6 +262,7 @@ public:
         cefObj->SetValue("on", CefV8Value::CreateFunction("on", handler), V8_PROPERTY_ATTRIBUTE_NONE);
         cefObj->SetValue("off", CefV8Value::CreateFunction("off", handler), V8_PROPERTY_ATTRIBUTE_NONE);
         cefObj->SetValue("set_focus", CefV8Value::CreateFunction("set_focus", handler), V8_PROPERTY_ATTRIBUTE_NONE);
+        cefObj->SetValue("exitGame", CefV8Value::CreateFunction("exitGame", handler), V8_PROPERTY_ATTRIBUTE_NONE);
 
         global->SetValue("cef", cefObj, V8_PROPERTY_ATTRIBUTE_NONE);
     }
