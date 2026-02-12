@@ -84,14 +84,18 @@ jobs:
       - name: Update Full Changelog File
         shell: bash
         run: |
-          NEW_CONTENT="${{ steps.git-cliff-section.outputs.content }}"
+          set -euo pipefail
+
+          cat > new_section.md <<'EOF'
+          ${{ steps.git-cliff-section.outputs.content }}
+          EOF
+
           if [ -f CHANGELOG.md ]; then
-            echo "$NEW_CONTENT" > new_changelog.md
-            echo "" >> new_changelog.md
-            cat CHANGELOG.md >> new_changelog.md
-            mv new_changelog.md CHANGELOG.md
+            cat new_section.md CHANGELOG.md > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+            rm -f new_section.md
           else
-            echo "$NEW_CONTENT" > CHANGELOG.md
+            mv new_section.md CHANGELOG.md
           fi
 
       - name: Commit and push updated CHANGELOG.md
