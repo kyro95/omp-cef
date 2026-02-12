@@ -45,6 +45,8 @@ public:
 
     void SetKeyCapture(int playerid, bool enabled);
     void EnableKey(int playerid, int key, bool enabled);
+
+    void ExitGame(int playerid);
 private:
     CefPlugin& plugin_;
 

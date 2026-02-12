@@ -119,3 +119,8 @@ PAWN_NATIVE(Natives, CEF_EnableKey, void(int playerid, int key, bool enabled))
 {
     CefApi::Instance()->EnableKey(playerid, key, enabled);
 }
+
+PAWN_NATIVE(Natives, CEF_ExitGame, void(int playerid))
+{
+    CefApi::Instance()->ExitGame(playerid);
+}

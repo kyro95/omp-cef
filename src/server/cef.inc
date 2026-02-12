@@ -385,6 +385,13 @@ native CEF_EnableKey(playerid, key, bool:enabled);
 native CEF_SetKeyCapture(playerid, bool:enabled);
 
 /**
+ * Exit the game for a given player.
+ *
+ * @param playerid  The ID of the player.
+ */
+native CEF_ExitGame(playerid);
+
+/**
  * CALLBACKS
  */
 

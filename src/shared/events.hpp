@@ -31,6 +31,8 @@ namespace CefEvent
 
         inline constexpr const char* SetKeyCapture = "SetKeyCapture";
         inline constexpr const char* EnableKey = "EnableKey";
+
+        inline constexpr const char* ExitGame = "ExitGame";
     }
 
     namespace Client 

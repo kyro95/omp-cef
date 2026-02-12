@@ -283,3 +283,11 @@ void CefApi::EnableKey(int playerid, int key, bool enabled)
 
     plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
 }
+
+void CefApi::ExitGame(int playerid)
+{
+	EmitEventPacket event;
+	event.name = CefEvent::Server::ExitGame;
+
+	plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
+}

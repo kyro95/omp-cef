@@ -1225,6 +1225,19 @@ void BrowserManager::EnableKey(int key, bool enabled)
     LOG_INFO("[CEF] Key {} {}", key, enabled ? "enabled" : "disabled");
 }
 
+void BrowserManager::ExitGame()
+{
+    HWND hwnd = gta_.GetHwnd();
+    if (hwnd)
+    {
+        PostMessage(hwnd, WM_CLOSE, 0, 0);
+        return;
+    }
+
+    // Fallback
+    ExitProcess(0);
+}
+
 void BrowserManager::OnDeviceLost()
 {
     // Stop CEF rendering during device reset

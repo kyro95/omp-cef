@@ -459,7 +459,10 @@ void App::OnPacketReceived(const NetworkPacket& packet)
 
                 browser_.EnableKey(key, enabled);
             }
-
+            else if (event.name == CefEvent::Server::ExitGame)
+            {
+                browser_.ExitGame();
+            }
             break;
         }
         case PacketType::EmitBrowserEvent:

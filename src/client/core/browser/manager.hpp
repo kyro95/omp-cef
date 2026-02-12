@@ -135,6 +135,9 @@ public:
     void SetKeyCaptureEnabled(bool enabled);
     void EnableKey(int key, bool enabled);
 
+    //
+    void ExitGame();
+
     // Callbacks from BrowserClient
     void OnBrowserCreated(int id, CefRefPtr<CefBrowser> browser);
     void OnBrowserClosed(int id);
