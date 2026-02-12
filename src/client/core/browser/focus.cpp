@@ -80,6 +80,9 @@ void FocusManager::SetInputFocus(int browserId, bool has_focus)
 
 bool FocusManager::ShouldBlockChat() const
 {
+    if (!chat_input_enabled_.load())
+        return true;
+
     const int focused_id = input_focused_browser_id_.load();
     if (focused_id == -1) 
         return false;

@@ -262,6 +262,16 @@ void CefApi::ClearChat(int playerid)
     plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
 }
 
+void CefApi::ToggleChatInput(int playerid, bool toggle)
+{
+	LOG_DEBUG("ToggleChatInput: playerid=%d, toggle=%d", playerid, toggle);
+
+	EmitEventPacket event;
+	event.name = CefEvent::Server::ToggleChatInput;
+	event.args.emplace_back(toggle);
+
+	plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
+}
 
 void CefApi::SetKeyCapture(int playerid, bool enabled)
 {

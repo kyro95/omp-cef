@@ -446,6 +446,12 @@ void App::OnPacketReceived(const NetworkPacket& packet)
             {
                 pending_clear_chat_ = true;
             }
+            else if (event.name == CefEvent::Server::ToggleChatInput && event.args.size() >= 1)
+            {
+                bool toggle = event.args[0].boolValue;
+
+                focus_.SetChatInputEnabled(toggle);
+            }
             else if (event.name == CefEvent::Server::SetKeyCapture && event.args.size() >= 1)
             {
                 bool enabled = event.args[0].boolValue;

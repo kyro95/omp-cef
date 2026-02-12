@@ -42,6 +42,7 @@ public:
     void ToggleSpawnScreen(int playerid, bool toggle);
 
     void ClearChat(int playerid);
+    void ToggleChatInput(int playerid, bool toggle);
 
     void SetKeyCapture(int playerid, bool enabled);
     void EnableKey(int playerid, int key, bool enabled);

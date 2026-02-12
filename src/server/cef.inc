@@ -353,11 +353,18 @@ native CEF_ToggleSpawnScreen(playerid, bool:toggle);
 native CEF_ClearChat(playerid);
 
 /**
+ * Enables or disables the SA:MP chat input for a specific player.
  *
- * @param playerid      The ID of the player for whom the screen will be toggled.
- * @param toggle        Set to 'true' to show the chat input, 'false' to hide it.
-*/
-// TODO: native CEF_ToggleChatInput(playerid, bool:toggle);
+ * When disabled, the player will not be able to open the chat input
+ * (e.g. with the "T" or "F6" key).
+ *
+ * This function only affects the chat input box — it does not hide
+ * the chat messages already displayed on screen.
+ *
+ * @param playerid      The ID of the player whose chat input state will be changed.
+ * @param toggle        Set to 'true' to enable the chat input, 'false' to disable it.
+ */
+native CEF_ToggleChatInput(playerid, bool:toggle);
 
 /**
  * Enables or disables forwarding of a specific key to OnCefPressKey for a player.

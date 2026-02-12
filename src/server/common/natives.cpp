@@ -110,6 +110,11 @@ PAWN_NATIVE(Natives, CEF_ClearChat, void(int playerid))
     CefApi::Instance()->ClearChat(playerid);
 }
 
+PAWN_NATIVE(Natives, CEF_ToggleChatInput, void(int playerid, bool toggle))
+{
+    CefApi::Instance()->ToggleChatInput(playerid, toggle);
+}
+
 PAWN_NATIVE(Natives, CEF_SetKeyCapture, void(int playerid, bool enabled))
 {
     CefApi::Instance()->SetKeyCapture(playerid, enabled);

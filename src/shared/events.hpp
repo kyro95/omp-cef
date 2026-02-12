@@ -28,6 +28,7 @@ namespace CefEvent
         inline constexpr const char* ToggleSpawnScreen = "ToggleSpawnScreen";
 
         inline constexpr const char* ClearChat = "ClearChat";
+        inline constexpr const char* ToggleChatInput = "ToggleChatInput";
 
         inline constexpr const char* SetKeyCapture = "SetKeyCapture";
         inline constexpr const char* EnableKey = "EnableKey";

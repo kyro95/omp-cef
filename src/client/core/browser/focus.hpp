@@ -19,6 +19,7 @@ public:
     // void RestoreGameControls();
     void SetInputFocus(int browserId, bool has_focus);
     bool ShouldBlockChat() const;
+    void SetChatInputEnabled(bool enabled) { chat_input_enabled_.store(enabled); }
 
     int GetInputFocusedBrowserId() const { return input_focused_browser_id_.load(); }
     bool IsTextInputFocused(int browserId) const { return input_focused_browser_id_.load() == browserId; }
@@ -30,4 +31,6 @@ private:
 
     // Browser ID currently holding input focus (-1 = none)
     std::atomic<int> input_focused_browser_id_{ -1 };
+
+    std::atomic<bool> chat_input_enabled_{ true };
 };
