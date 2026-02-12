@@ -2,6 +2,16 @@
 
 #include "samp/pools/game_pool.hpp"
 
+enum class SampGameState
+{
+    Unknown = -1,
+    WaitConnect = 0,
+    Connecting = 1,
+    Connected = 2,  
+    WaitJoin = 3,
+    Restarting = 4,
+};
+
 class INetGameView 
 {
 public:
@@ -10,7 +20,12 @@ public:
 	virtual std::string GetIp() const = 0;
 	virtual int GetPort() const = 0;
 
-	virtual int GetState() const = 0;
+    virtual SampGameState GetGameState() const = 0;
+
+    bool IsConnected() const { 
+        return GetGameState() == SampGameState::Connected; 
+    }
+
 	virtual int GetLocalPlayerId() const = 0;
 	virtual std::string GetLocalPlayerName() const = 0;
 

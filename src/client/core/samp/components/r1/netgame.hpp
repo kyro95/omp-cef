@@ -17,7 +17,8 @@ public:
     std::string GetIp() const override;
     int GetPort() const override;
 
-    int GetState() const override;
+    SampGameState GetGameState() const override;
+
     int GetLocalPlayerId() const override;
     std::string GetLocalPlayerName() const override;
 
@@ -31,4 +32,13 @@ private:
 
     ObjectPool_R1 object_pool_wrapper_;
     VehiclePool_R1 vehicle_pool_wrapper_;
+
+    enum class RawMode : int
+    {
+        WaitConnect = 9,
+        Connecting = 13,
+        Connected = 14,
+        WaitJoin = 15,
+        Restarting = 18,
+    };
 };

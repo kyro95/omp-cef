@@ -12,6 +12,8 @@ public:
     int GetPort() const;
 
     int GetState() const;
+    bool IsConnected() const;
+
     int GetLocalPlayerId() const;
     std::string GetLocalPlayerName() const;
 

@@ -48,12 +48,20 @@ int NetGameComponent::GetPort() const
 	return view_->GetPort();
 }
 
-int NetGameComponent::GetState()const
+int NetGameComponent::GetState() const
 {
-	if (!view_)
-		return -1;
+    if (!view_)
+        return -1;
 
-	return view_->GetState();
+    return static_cast<int>(view_->GetGameState());
+}
+
+bool NetGameComponent::IsConnected() const
+{
+    if (!view_)
+        return false;
+
+    return view_->IsConnected();
 }
 
 int NetGameComponent::GetLocalPlayerId()const

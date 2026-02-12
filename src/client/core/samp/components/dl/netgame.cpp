@@ -33,14 +33,27 @@ int NetGameView_DL::GetPort() const
     return -1;
 }
 
-int NetGameView_DL::GetState() const 
+SampGameState NetGameView_DL::GetGameState() const
 {
     auto* netGame = GetNetGame();
-    if (netGame) {
-        return netGame->GetState();
-    }
+    if (!netGame)
+        return SampGameState::Unknown;
 
-    return -1;
+    switch (static_cast<RawMode>(netGame->GetState()))
+    {
+        case RawMode::WaitConnect: 
+            return SampGameState::WaitConnect;
+        case RawMode::Connecting:  
+            return SampGameState::Connecting;
+        case RawMode::Connected:   
+            return SampGameState::Connected;
+        case RawMode::WaitJoin:    
+            return SampGameState::WaitJoin;
+        case RawMode::Restarting:  
+            return SampGameState::Restarting;
+        default:                   
+            return SampGameState::Unknown;
+    }
 }
 
 int NetGameView_DL::GetLocalPlayerId() const
