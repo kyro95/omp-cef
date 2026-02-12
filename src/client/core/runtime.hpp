@@ -38,6 +38,7 @@ public:
 	static std::unique_ptr<Runtime> CreateDefault();
 
 	bool Start();
+	void FinalizeInitialization(HWND hwnd);
 	void Stop();
 
 private:
@@ -46,6 +47,8 @@ private:
 	Runtime& operator=(const Runtime&) = delete;
 	Runtime(Runtime&&) = delete;
 	Runtime& operator=(Runtime&&) = delete;
+
+	std::atomic<bool> init_finalized_{ false };
 
 	std::unique_ptr<Logger> logger_;
 	std::unique_ptr<ConfigManager> config_;

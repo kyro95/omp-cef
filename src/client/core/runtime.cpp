@@ -56,77 +56,50 @@ bool Runtime::Start()
 	logger_->SetDebugMode(config_->Get<bool>("debug", false));
 
 	gta_->Initialize();
-	hud_->Initialize();
+    hud_->Initialize();
+    
+    if (!audio_->Initialize()) {
+        LOG_ERROR("AudioManager init failed. Audio disabled.");
+    }
+    
+    resources_ = std::make_unique<ResourceManager>(*gta_);
+    network_ = std::make_unique<NetworkManager>(*resources_);
+    resources_->SetNetworkManager(*network_);
+    
+    browser_ = std::make_unique<BrowserManager>(*audio_, *gta_, *resources_, *network_);
+    focus_ = std::make_unique<FocusManager>(*browser_);
+    browser_->SetFocusManager(focus_.get());
+    
+    if (!browser_->Initialize()) {
+        LOG_FATAL("CEF init failed. Disabling CEF features.");
+        return true;
+    }
+    
+    hooks_ = std::make_unique<HookManager>();
+    if (!hooks_->Initialize()) {
+        LOG_FATAL("HookManager init failed.");
+        return true;
+    }
+    
+    CursorHook::Instance().Initialize(*hooks_);
 
-	// Audio
-	if (!audio_->Initialize())
-	{
-		LOG_ERROR("AudioManager init failed (OpenAL). Audio will be disabled.");
-	}
-
-	resources_ = std::make_unique<ResourceManager>(*gta_);
-	network_ = std::make_unique<NetworkManager>(*resources_);
-	resources_->SetNetworkManager(*network_);
-
-	// Browser
-	browser_ = std::make_unique<BrowserManager>(*audio_, *gta_, *resources_, *network_);
-	focus_ = std::make_unique<FocusManager>(*browser_);
-	browser_->SetFocusManager(focus_.get());
-	if (!browser_->Initialize())
-	{
-		LOG_FATAL("CEF init failed. Disabling CEF features (game unaffected).");
-		return true;
-	}
-
-	// Hooks
-	hooks_ = std::make_unique<HookManager>();
-	if (!hooks_->Initialize())
-	{
-		LOG_FATAL("HookManager init failed (game unaffected).");
-		return true;
-	}
-
-	CursorHook::Instance().Initialize(*hooks_);
-
-	// WndProc
-	wndproc_ = std::make_unique<WndProcHook>(gta_->GetHwnd());
-	if (!wndproc_->Initialize())
-	{
-		LOG_FATAL("WndProc hook init failed (game unaffected).");
-		return true;
-	}
-
-	wndproc_->OnMessage = [this](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT
-	{
-		if (browser_ && browser_->OnWndProcMessage(hwnd, msg, wParam, lParam))
-			return TRUE;
-
-		if (msg == WM_ACTIVATE)
-		{
-			const bool active = (LOWORD(wParam) != WA_INACTIVE);
-
-			if (browser_)
-				browser_->SetDrawEnabled(active);
-
-			return 0;
-		}
-
-		return FALSE;
-	};
-
-	// Render manager
-	RenderManager::Instance().SetHookManager(hooks_.get());
-	RenderManager::Instance().SetGameWindow(gta_->GetHwnd());
-
-	if (!RenderManager::Instance().Initialize())
-	{
-		LOG_FATAL("RenderManager init failed (D3D9 hook) (game unaffected).");
-		return true;
-	}
+    gta_->SetOnHwndFound([this](HWND hwnd) {
+        LOG_INFO("[Runtime] HWND callback triggered, finalizing initialization...");
+        FinalizeInitialization(hwnd);
+    });
+    
+    RenderManager::Instance().SetHookManager(hooks_.get());
+    RenderManager::Instance().SetGameWindow(gta_->GetHwnd());
+    
+    if (!RenderManager::Instance().Initialize()) {
+        LOG_FATAL("RenderManager init failed.");
+        return true;
+    }
 
 	RenderManager::Instance().OnPresent = [this]()
 	{
-		// Safe place to PollD3D
+		if (gta_)
+			gta_->PumpMainThreadCallbacks();
 		if (!RenderManager::Instance().GetDevice())
 			RenderManager::Instance().PollD3D();
 
@@ -191,6 +164,58 @@ bool Runtime::Start()
 	app_->Initialize();
 
 	return true;
+}
+
+void Runtime::FinalizeInitialization(HWND hwnd)
+{
+    if (init_finalized_.exchange(true, std::memory_order_acq_rel))
+    {
+        LOG_DEBUG("[Runtime] FinalizeInitialization already done, skipping.");
+        return;
+    }
+
+    LOG_INFO("[Runtime] Finalizing initialization with HWND={}...", static_cast<void*>(hwnd));
+
+    if (!hwnd || !::IsWindow(hwnd))
+    {
+        LOG_ERROR("[Runtime] FinalizeInitialization called with invalid HWND!");
+        init_finalized_.store(false, std::memory_order_release);
+        return;
+    }
+
+    // WndProc
+    if (!wndproc_)
+    {
+        wndproc_ = std::make_unique<WndProcHook>(hwnd);
+        if (!wndproc_->Initialize())
+        {
+            LOG_ERROR("[Runtime] WndProc hook failed with HWND={}", static_cast<void*>(hwnd));
+            init_finalized_.store(false, std::memory_order_release); 
+            wndproc_.reset();
+            return;
+        }
+
+        wndproc_->OnMessage = [this](HWND h, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT
+        {
+            if (browser_ && browser_->OnWndProcMessage(h, msg, wParam, lParam))
+                return TRUE;
+
+            if (msg == WM_ACTIVATE)
+            {
+                const bool active = (LOWORD(wParam) != WA_INACTIVE);
+                if (browser_)
+                    browser_->SetDrawEnabled(active);
+                return 0;
+            }
+
+            return FALSE;
+        };
+
+        LOG_INFO("[Runtime] WndProc hook installed successfully.");
+    }
+
+    RenderManager::Instance().SetGameWindow(hwnd);
+    LOG_INFO("[Runtime] Initialization finalized.");
 }
 
 void Runtime::Stop()

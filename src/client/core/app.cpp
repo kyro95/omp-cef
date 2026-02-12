@@ -154,7 +154,7 @@ void App::Tick()
         {
             const int mode = netGame->GetState();
 
-            if (mode == GAME_MODE_CONNECTED)
+            if (netGame->IsConnected())
             {
                 const int localPlayerId = netGame->GetLocalPlayerId();
                 if (localPlayerId >= 0)
@@ -193,7 +193,7 @@ void App::Tick()
                                     net_host_ = host;
                                     net_port_ = cefPort;
 
-                                    LOG_DEBUG("[CEF] Endpoint {}:{} (derived from {}:{})", net_host_.c_str(), (int)net_port_, host.c_str(), gamePort);
+                                    LOG_INFO("[CEF] Endpoint {}:{} (derived from {}:{})", net_host_.c_str(), (int)net_port_, host.c_str(), gamePort);
                                 }
 
                                 LOG_DEBUG("[CEF] Server endpoint changed -> resetting session state.");

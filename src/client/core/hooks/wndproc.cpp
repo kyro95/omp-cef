@@ -1,36 +1,37 @@
-#include "wndproc.hpp"
+﻿#include "wndproc.hpp"
 #include "system/logger.hpp"
 
 bool WndProcHook::Initialize()
 {
-    if (!hwnd_) {
-        LOG_FATAL("WndProcHook: invalid HWND.");
+    if (!hwnd_ || !::IsWindow(hwnd_)) {
+        LOG_ERROR("[WndProcHook] Invalid or destroyed HWND: {}", static_cast<void*>(hwnd_));
         return false;
     }
-
+    
     s_self_ = this;
 
     ::SetLastError(0);
     auto prev = reinterpret_cast<WNDPROC>(
-        ::SetWindowLongPtr(hwnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&StaticWndProc))
+        ::SetWindowLongPtrW(hwnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&StaticWndProc))
     );
 
-    if (!prev && ::GetLastError() != 0) {
-        LOG_FATAL("Failed to install WndProc hook (err={}).", ::GetLastError());
+    DWORD err = ::GetLastError();
+    if (!prev && err != 0) {
+        LOG_ERROR("[WndProcHook] SetWindowLongPtr failed (error={})", err);
         s_self_ = nullptr;
         return false;
     }
 
-    baseProc_ = prev; // real original at time of first hook
-    nextProc_ = prev; // chain target initially
+    baseProc_ = prev;
+    nextProc_ = prev;
 
-    LOG_DEBUG("WndProc hook installed successfully.");
+    LOG_INFO("[WndProcHook] Hook installed (hwnd={}, baseProc={})", static_cast<void*>(hwnd_), static_cast<void*>(baseProc_));
     return true;
 }
 
 void WndProcHook::EnsureInstalled()
 {
-    if (!hwnd_)
+    if (!hwnd_ || !::IsWindow(hwnd_))
         return;
 
     const DWORD now = ::GetTickCount();
@@ -39,7 +40,7 @@ void WndProcHook::EnsureInstalled()
 
     lastEnsureTick_ = now;
 
-    const auto current = reinterpret_cast<WNDPROC>(::GetWindowLongPtr(hwnd_, GWLP_WNDPROC));
+    const auto current = reinterpret_cast<WNDPROC>(::GetWindowLongPtrW(hwnd_, GWLP_WNDPROC));
     if (!current)
         return;
 
@@ -49,9 +50,11 @@ void WndProcHook::EnsureInstalled()
     nextProc_ = current;
 
     ::SetLastError(0);
-    ::SetWindowLongPtr(hwnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&StaticWndProc));
+    ::SetWindowLongPtrW(hwnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&StaticWndProc));
 
-    LOG_WARN("[WndProcHook] WndProc was replaced -> hook reinstalled (nextProc={}).", (void*)nextProc_);
+    if (::GetLastError() == 0) {
+        LOG_DEBUG("[WndProcHook] Hook reinstalled (nextProc={})", static_cast<void*>(nextProc_));
+    }
 }
 
 void WndProcHook::Shutdown()
@@ -59,14 +62,13 @@ void WndProcHook::Shutdown()
     if (!hwnd_)
         return;
 
-    const auto current = reinterpret_cast<WNDPROC>(::GetWindowLongPtr(hwnd_, GWLP_WNDPROC));
+    const auto current = reinterpret_cast<WNDPROC>(::GetWindowLongPtrW(hwnd_, GWLP_WNDPROC));
 
     if (current == reinterpret_cast<WNDPROC>(&StaticWndProc))
     {
-        // Restore to whatever was current when we last ensured (usually SA-MP proc).
         auto restore = nextProc_ ? nextProc_ : baseProc_;
-        if (restore)
-            ::SetWindowLongPtr(hwnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(restore));
+        if (restore && ::IsWindow(hwnd_))
+            ::SetWindowLongPtrW(hwnd_, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(restore));
     }
 
     hwnd_ = nullptr;
@@ -74,34 +76,30 @@ void WndProcHook::Shutdown()
     nextProc_ = nullptr;
     s_self_ = nullptr;
 
-    LOG_DEBUG("WndProc hook uninstalled successfully.");
+    LOG_INFO("[WndProcHook] Hook uninstalled.");
 }
 
 LRESULT CALLBACK WndProcHook::StaticWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     auto* self = s_self_;
 
-    // If SA-MP's proc calls back into our proc (because it saved us as "prev"),
-    // we must NOT call nextProc_ again, or we recurse infinitely.
     static thread_local int depth = 0;
     const bool reentered = (depth++ > 0);
 
-    // Only run our handler
     if (!reentered && self && self->OnMessage)
     {
         const LRESULT result = self->OnMessage(hwnd, msg, wParam, lParam);
-        if (result != 0) { 
-            depth--; 
-            return result; 
+        if (result != 0) {
+            depth--;
+            return result;
         }
     }
 
     WNDPROC target = nullptr;
-
     if (self)
         target = reentered ? self->baseProc_ : self->nextProc_;
 
-    const LRESULT out = ::CallWindowProc(target ? target : ::DefWindowProc, hwnd, msg, wParam, lParam);
+    const LRESULT out = ::CallWindowProc(target ? target : ::DefWindowProcW, hwnd, msg, wParam, lParam);
 
     depth--;
     return out;

@@ -67,8 +67,13 @@ void NetworkManager::Shutdown()
 
 void NetworkManager::Connect(int playerid)
 {
-	if (state_ != ConnectionState::DISCONNECTED)
-		return;
+    LOG_INFO("[CLIENT] Connect() called with playerid={}", playerid);
+    LOG_DEBUG("[CLIENT] Current state={}, non_cef_server={}", (int)state_.load(), non_cef_server_.load());
+    
+    if (state_ != ConnectionState::DISCONNECTED) {
+        LOG_WARN("[CLIENT] Connect() rejected: already in state {}", (int)state_.load());
+        return;
+    }
 
 	if (non_cef_server_.load())
 		return;
