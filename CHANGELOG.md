@@ -1,4 +1,25 @@
 
+## [1.2.0](https://github.com/aurora-mp/omp-cef/compare/v1.1.0..v1.2.0) (2026-02-19)
+
+### 🧹 Chore
+
+- Bump next version - ([b662b38](https://github.com/aurora-mp/omp-cef/commit/b662b385cf5195c6eb588523ba85d88636165b22))
+
+### ✨ Features
+
+- *(client)* Add poll player stats #14 - ([4d2318f](https://github.com/aurora-mp/omp-cef/commit/4d2318f5f557a2d69df2e8279d79d98eb0f2f73e))
+- *(client)* Add cef.isChatInputOpen #13 - ([37e2fc0](https://github.com/aurora-mp/omp-cef/commit/37e2fc05e348d8381f57739c6068808ba15d0747))
+- *(server)* Add CEF_IsChatInputOpen & OnCefChatInputState - ([d1153bd](https://github.com/aurora-mp/omp-cef/commit/d1153bd739889ee32ecf5f217281d99209a587f4))
+
+### 🐛 Bug Fixes
+
+- *(client)* Fix issues with ALT + TAB & cursor restoration - ([3013b74](https://github.com/aurora-mp/omp-cef/commit/3013b7495afeba7239709c4a5449f44cfb0d444c))
+- *(omp)* Fix IsPlayerNpcBot - ([eade1e4](https://github.com/aurora-mp/omp-cef/commit/eade1e47c428b367e6ae5c1534eff4e60017c610))
+- Fix GLIBC compatibility - ([e68988c](https://github.com/aurora-mp/omp-cef/commit/e68988c15255100a7852b22d18101a37d3973e55))
+
+
+
+
 ## [1.1.0](https://github.com/aurora-mp/omp-cef/compare/v1.0.5..v1.1.0) (2026-02-12)
 
 ### 🧹 Chore
