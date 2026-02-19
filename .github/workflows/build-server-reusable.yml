@@ -97,7 +97,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           VCPKG_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
 
           cmake -B build -S . \
@@ -136,9 +135,10 @@ jobs:
     env:
       DEBIAN_FRONTEND: noninteractive
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      CMAKE_VERSION: 3.31.10
 
     steps:
-      - name: Install build dependencies (Linux container)
+      - name: Install build dependencies
         shell: bash
         run: |
           set -euo pipefail
@@ -148,17 +148,27 @@ jobs:
 
           apt-get install -y --no-install-recommends \
             ca-certificates git \
-            build-essential cmake ninja-build pkg-config \
+            build-essential ninja-build pkg-config \
             curl zip unzip tar python3 \
-            binutils \
-            patch \
+            binutils patch \
             gcc-multilib g++-multilib linux-libc-dev:i386 \
             autoconf automake libtool m4 gettext
+
+          echo "Installing CMake ${CMAKE_VERSION}..."
+          curl -fsSL -o cmake.tar.gz "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
+          mkdir -p /opt/cmake
+          tar -xzf cmake.tar.gz -C /opt/cmake --strip-components=1
+          rm -f cmake.tar.gz
+
+          echo "/opt/cmake/bin" >> "$GITHUB_PATH"
 
           rm -rf /var/lib/apt/lists/*
 
           echo "glibc version in container:"
           ldd --version 2>&1 | sed -n '1p'
+
+          echo "cmake version in container:"
+          /opt/cmake/bin/cmake --version 2>&1 | sed -n '1p'
 
       - name: Checkout code and submodules
         uses: actions/checkout@v4
@@ -253,6 +263,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          cmake --version 2>&1 | sed -n '1p'
 
           VCPKG_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
           EXTRA_ARGS=""
