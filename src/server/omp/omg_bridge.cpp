@@ -186,11 +186,14 @@ void OmpPlatformBridge::KickPlayer(int playerid)
     }
 }
 
-bool OmpPlatformBridge::IsPlayerNpcBot(int playerid) 
+bool OmpPlatformBridge::IsPlayerNpcBot(int playerid)
 {
-    if (core_)
-    {
-        IPlayer* player = core_->getPlayers().get(playerid);
-        return player->isBot();
-    }
+    if (!core_)
+        return false;
+
+    IPlayer* player = core_->getPlayers().get(playerid);
+    if (!player)
+        return false;
+
+    return player->isBot();
 }
