@@ -54,6 +54,8 @@ struct NetworkSession
 	std::shared_ptr<FileTransfer> current_transfer = nullptr;
 	std::atomic<bool> is_download_paused{false};
 
+	bool chat_input_open{false};
+
 	std::mutex kcp_mutex;
 };
 

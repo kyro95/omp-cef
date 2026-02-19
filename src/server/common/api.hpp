@@ -43,6 +43,7 @@ public:
 
     void ClearChat(int playerid);
     void ToggleChatInput(int playerid, bool toggle);
+    bool IsChatInputOpen(int playerid);
 
     void SetKeyCapture(int playerid, bool enabled);
     void EnableKey(int playerid, int key, bool enabled);

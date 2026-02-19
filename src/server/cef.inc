@@ -367,6 +367,19 @@ native CEF_ClearChat(playerid);
 native CEF_ToggleChatInput(playerid, bool:toggle);
 
 /**
+ * Returns whether the SA:MP chat input is currently open for a player.
+ *
+ * Note:
+ * - This is the state of the *input box* (open/closed), not the chat messages panel.
+ * - The value is updated client-side and synchronized to the server by the plugin.
+ *
+ * @param playerid  The player ID.
+ *
+ * @return 1 if the chat input is open, 0 if it is closed.
+ */
+native CEF_IsChatInputOpen(playerid);
+
+/**
  * Enables or disables forwarding of a specific key to OnCefPressKey for a player.
  * Keys are Windows Virtual-Key codes (VK).
  *
@@ -466,6 +479,14 @@ forward OnCefBrowserCreated(playerid, browserid, bool:success, E_CEF_CREATE_STAT
  * @param repeat     True if this key event is an auto-repeat; false otherwise.
 */
 forward OnCefPressKey(playerid, key, scancode, modifiers, bool:down, bool:repeat);
+
+/**
+ * Called when the client detects a change in the SA:MP chat input state (open/closed).
+ *
+ * @param playerid  The player ID.
+ * @param open      true if chat input is open, false if closed.
+ */
+forward OnCefChatInputState(playerid, bool:open);
 
 /**
  * Called when a player clicks on a world entity (player, vehicle, object) that

@@ -660,6 +660,25 @@ void CefPlugin::HandleClientEvent(int playerid, const ClientEmitEventPacket& pay
 		return;
 	}
 
+    if (payload.name == CefEvent::Client::ChatInputState)
+	{
+		if (payload.args.size() >= 1)
+		{
+			bool open = payload.args[0].boolValue;
+
+			auto session = sessions_->GetSession(playerid);
+			if (session)
+				session->chat_input_open = open;
+
+			std::vector<Argument> args;
+			args.emplace_back(playerid);
+			args.emplace_back(open);
+			bridge_->CallPawnPublic("OnCefChatInputState", args);
+		}
+
+		return;
+	}
+
     auto it = registered_events_.find(payload.name);
     if (it == registered_events_.end())
         return;

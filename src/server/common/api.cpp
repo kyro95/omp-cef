@@ -273,6 +273,15 @@ void CefApi::ToggleChatInput(int playerid, bool toggle)
 	plugin_.SendPacketToPlayer(playerid, PacketType::EmitEvent, event);
 }
 
+bool CefApi::IsChatInputOpen(int playerid)
+{
+    auto session = plugin_.GetNetworkSessionManager().GetSession(playerid);
+    if (!session)
+        return false;
+
+    return session->chat_input_open;
+}
+
 void CefApi::SetKeyCapture(int playerid, bool enabled)
 {
 	LOG_DEBUG("SetKeyCapture: playerid=%d, enabled=%d", playerid, enabled);

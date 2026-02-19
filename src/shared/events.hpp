@@ -42,5 +42,6 @@ namespace CefEvent
         inline constexpr const char* DownloadStart = "DownloadStart";
         inline constexpr const char* DownloadFinish = "DownloadFinish";
         inline constexpr const char* PressKey = "PressKey";
+        inline constexpr const char* ChatInputState = "ChatInputState";
     }
 }
