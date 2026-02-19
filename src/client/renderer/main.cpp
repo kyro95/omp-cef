@@ -16,6 +16,8 @@ using PendingArg  = std::variant<std::monostate, bool, int, double, CefString>;
 using PendingArgs = std::vector<PendingArg>;
 static std::map<std::string, std::vector<PendingArgs>> pending_events_;
 
+static bool g_chat_input_open = false;
+
 static CefV8ValueList BuildJsArgs(const PendingArgs& pending)
 {
     CefV8ValueList jsArgs;
@@ -231,6 +233,11 @@ public:
             CefV8Context::GetCurrentContext()->GetFrame()->SendProcessMessage(PID_BROWSER, msg);
             return true;
         }
+        else if (name == "isChatInputOpen")
+        {
+            retval = CefV8Value::CreateBool(g_chat_input_open);
+            return true;
+        }
         else if (name == "exitGame")
         {
             CefRefPtr<CefProcessMessage> msg = CefProcessMessage::Create("cef_exit_game");
@@ -262,6 +269,7 @@ public:
         cefObj->SetValue("on", CefV8Value::CreateFunction("on", handler), V8_PROPERTY_ATTRIBUTE_NONE);
         cefObj->SetValue("off", CefV8Value::CreateFunction("off", handler), V8_PROPERTY_ATTRIBUTE_NONE);
         cefObj->SetValue("set_focus", CefV8Value::CreateFunction("set_focus", handler), V8_PROPERTY_ATTRIBUTE_NONE);
+        cefObj->SetValue("isChatInputOpen", CefV8Value::CreateFunction("isChatInputOpen", handler), V8_PROPERTY_ATTRIBUTE_NONE);
         cefObj->SetValue("exitGame", CefV8Value::CreateFunction("exitGame", handler), V8_PROPERTY_ATTRIBUTE_NONE);
 
         global->SetValue("cef", cefObj, V8_PROPERTY_ATTRIBUTE_NONE);
@@ -282,6 +290,11 @@ public:
 
             // The event name is always at index 0
             std::string eventName = args->GetString(0);
+
+            if (eventName == "omp:cef:internal:chatInputState" && args->GetSize() >= 2 && args->GetType(1) == VTYPE_BOOL)
+            {
+                g_chat_input_open = args->GetBool(1);
+            }
 
             CefV8ValueList jsArgs;
             for (size_t i = 1; i < args->GetSize(); ++i)

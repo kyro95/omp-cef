@@ -19,7 +19,10 @@ public:
     // void RestoreGameControls();
     void SetInputFocus(int browserId, bool has_focus);
     bool ShouldBlockChat() const;
+
     void SetChatInputEnabled(bool enabled) { chat_input_enabled_.store(enabled); }
+    void SetChatInputOpen(bool open) { chat_input_open_.store(open); }
+    bool IsChatInputOpen() const { return chat_input_open_.load(); }
 
     int GetInputFocusedBrowserId() const { return input_focused_browser_id_.load(); }
     bool IsTextInputFocused(int browserId) const { return input_focused_browser_id_.load() == browserId; }
@@ -33,4 +36,5 @@ private:
     std::atomic<int> input_focused_browser_id_{ -1 };
 
     std::atomic<bool> chat_input_enabled_{ true };
+    std::atomic<bool> chat_input_open_{ false };
 };
