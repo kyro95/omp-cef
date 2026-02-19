@@ -88,10 +88,11 @@ LRESULT CALLBACK WndProcHook::StaticWndProc(HWND hwnd, UINT msg, WPARAM wParam, 
 
     if (!reentered && self && self->OnMessage)
     {
-        const LRESULT result = self->OnMessage(hwnd, msg, wParam, lParam);
-        if (result != 0) {
+        auto result = self->OnMessage(hwnd, msg, wParam, lParam);
+        if (result.has_value())
+        {
             depth--;
-            return result;
+            return result.value();
         }
     }
 
@@ -99,7 +100,8 @@ LRESULT CALLBACK WndProcHook::StaticWndProc(HWND hwnd, UINT msg, WPARAM wParam, 
     if (self)
         target = reentered ? self->baseProc_ : self->nextProc_;
 
-    const LRESULT out = ::CallWindowProc(target ? target : ::DefWindowProcW, hwnd, msg, wParam, lParam);
+    const LRESULT out = ::CallWindowProcW(
+        target ? target : ::DefWindowProcW, hwnd, msg, wParam, lParam);
 
     depth--;
     return out;

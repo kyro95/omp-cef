@@ -1,5 +1,6 @@
 ﻿#include "gta.hpp"
 #include "system/logger.hpp"
+
 #include <shlobj.h>
 #include <filesystem>
 #include <chrono>
@@ -41,7 +42,6 @@ void Gta::PumpMainThreadCallbacks()
     while (!local.empty())
     {
         auto& fn = local.front();
-
         if (fn)
         {
             try { fn(); }
@@ -50,7 +50,6 @@ void Gta::PumpMainThreadCallbacks()
                 LOG_ERROR("[GTA] Exception in main-thread callback: {}", e.what());
             }
         }
-
         local.pop();
     }
 }
@@ -72,10 +71,8 @@ void Gta::SetOnHwndFound(std::function<void(HWND)> callback)
         if (hwnd)
         {
             LOG_DEBUG("[GTA] HWND already found, posting deferred callback...");
-            
             PostToMainThread([this, hwnd]() {
                 LOG_DEBUG("[GTA] Firing OnHwndFound callback on main thread (deferred).");
-                
                 std::lock_guard<std::mutex> lock(callback_mutex_);
                 if (on_hwnd_found_)
                     on_hwnd_found_(hwnd);
@@ -89,7 +86,7 @@ void Gta::SearchThreadLoop()
     using namespace std::chrono;
     using namespace std::chrono_literals;
 
-    int  iteration = 0;
+    int iteration = 0;
     auto start = steady_clock::now();
     auto last_log = start;
 
@@ -136,9 +133,8 @@ void Gta::OnHwndDiscovered(HWND hwnd)
 
     wchar_t title[256] = {};
     ::GetWindowTextW(hwnd, title, 256);
-    
+
     int utf8Len = WideCharToMultiByte(CP_UTF8, 0, title, -1, nullptr, 0, nullptr, nullptr);
-    
     std::string titleStr;
     if (utf8Len > 1)
     {
@@ -146,7 +142,8 @@ void Gta::OnHwndDiscovered(HWND hwnd)
         WideCharToMultiByte(CP_UTF8, 0, title, -1, &titleStr[0], utf8Len, nullptr, nullptr);
     }
 
-    LOG_DEBUG("[GTA] HWND found! handle={} title='{}'", static_cast<void*>(hwnd), titleStr);
+    LOG_DEBUG("[GTA] HWND found! handle={} title='{}'",
+        static_cast<void*>(hwnd), titleStr);
 
     PostToMainThread([this, hwnd]() {
         LOG_DEBUG("[GTA] Firing OnHwndFound callback on main thread.");
@@ -157,12 +154,12 @@ void Gta::OnHwndDiscovered(HWND hwnd)
     });
 }
 
+
 HWND Gta::FindHwndFromMemory()
 {
     __try {
         HWND* pHwnd = reinterpret_cast<HWND*>(HwndAddress);
-        HWND  hwnd = *pHwnd;
-
+        HWND  hwnd  = *pHwnd;
         if (hwnd && ::IsWindow(hwnd))
             return hwnd;
     }
@@ -172,41 +169,62 @@ HWND Gta::FindHwndFromMemory()
 
 HWND Gta::FindHwndByTitle()
 {
+    const DWORD pid = ::GetCurrentProcessId();
+
     HWND hwnd = ::FindWindowW(nullptr, L"GTA: San Andreas");
-    if (hwnd) 
+    if (hwnd && BelongsToCurrentProcess(hwnd, pid))
         return hwnd;
 
     hwnd = ::FindWindowW(nullptr, L"GTA:SA:MP");
-    if (hwnd) 
+    if (hwnd && BelongsToCurrentProcess(hwnd, pid))
         return hwnd;
 
-    HWND candidate = nullptr;
-    ::EnumWindows([](HWND hwnd, LPARAM lp) -> BOOL {
-        wchar_t title[256];
-        if (::GetWindowTextW(hwnd, title, 256) > 0)
+    SearchData data{ pid, nullptr };
+
+    ::EnumWindows([](HWND h, LPARAM lp) -> BOOL {
+        auto* d = reinterpret_cast<SearchData*>(lp);
+
+        DWORD wpid = 0;
+        ::GetWindowThreadProcessId(h, &wpid);
+        if (wpid != d->pid)
+            return TRUE;
+
+        wchar_t title[256] = {};
+        if (::GetWindowTextW(h, title, 256) > 0)
         {
-            std::wstring title_(title);
-            if (title_.find(L"GTA") != std::wstring::npos &&
-                title_.find(L"San Andreas") != std::wstring::npos)
+            std::wstring t(title);
+            if (t.find(L"GTA") != std::wstring::npos &&
+                t.find(L"San Andreas") != std::wstring::npos)
             {
-                *reinterpret_cast<HWND*>(lp) = hwnd;
+                d->result = h;
                 return FALSE;
             }
         }
         return TRUE;
-    }, reinterpret_cast<LPARAM>(&candidate));
+    }, reinterpret_cast<LPARAM>(&data));
 
-    return candidate;
+    return data.result;
 }
 
 HWND Gta::FindHwndByClass()
 {
-    HWND hwnd = ::FindWindowW(L"Grand theft auto San Andreas", nullptr);
-    if (hwnd) return hwnd;
+    const DWORD pid = ::GetCurrentProcessId();
 
-    HWND candidate = nullptr;
+    HWND hwnd = ::FindWindowW(L"Grand theft auto San Andreas", nullptr);
+    if (hwnd && BelongsToCurrentProcess(hwnd, pid))
+        return hwnd;
+
+    SearchData data{ pid, nullptr };
+
     ::EnumWindows([](HWND h, LPARAM lp) -> BOOL {
-        wchar_t cls[256];
+        auto* d = reinterpret_cast<SearchData*>(lp);
+
+        DWORD wpid = 0;
+        ::GetWindowThreadProcessId(h, &wpid);
+        if (wpid != d->pid)
+            return TRUE;
+
+        wchar_t cls[256] = {};
         if (::GetClassNameW(h, cls, 256) > 0)
         {
             std::wstring c(cls);
@@ -214,21 +232,20 @@ HWND Gta::FindHwndByClass()
             if (c.find(L"grand") != std::wstring::npos &&
                 c.find(L"theft") != std::wstring::npos)
             {
-                *reinterpret_cast<HWND*>(lp) = h;
+                d->result = h;
                 return FALSE;
             }
         }
         return TRUE;
-    }, reinterpret_cast<LPARAM>(&candidate));
+    }, reinterpret_cast<LPARAM>(&data));
 
-    return candidate;
+    return data.result;
 }
 
 HWND Gta::FindHwndByProcess()
 {
-    DWORD pid = ::GetCurrentProcessId();
+    const DWORD pid = ::GetCurrentProcessId();
 
-    struct SearchData { DWORD pid; HWND result; };
     SearchData data{ pid, nullptr };
 
     ::EnumWindows([](HWND h, LPARAM lp) -> BOOL {
@@ -270,7 +287,8 @@ std::string Gta::GetUserFilesPath()
         std::filesystem::path result = path;
         result /= "GTA San Andreas User Files";
         return result.string();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e) {
         LOG_ERROR("[GTA] Path error: {}", e.what());
         return "";
     }

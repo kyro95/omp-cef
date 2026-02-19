@@ -56,37 +56,29 @@ namespace
         return true;
     }
 
-    static HWND CreateDummyWindow() noexcept
+    static HWND CreateDummyWindow()
     {
         constexpr const char* className = "omp_cef_d3d9_dummy";
 
         WNDCLASSEXA wc{};
-        wc.cbSize        = sizeof(wc);
-        wc.lpfnWndProc   = DefWindowProcA;
-        wc.hInstance     = GetModuleHandleA(nullptr);
+        wc.cbSize = sizeof(wc);
+        wc.lpfnWndProc = ::DefWindowProcA;
+        wc.hInstance = GetModuleHandleA(nullptr);
         wc.lpszClassName = className;
+        ::RegisterClassExA(&wc);
 
-        RegisterClassExA(&wc);
-
-        HWND hwnd = CreateWindowExA(
-            WS_EX_NOACTIVATE |
-            WS_EX_TOOLWINDOW |
-            WS_EX_LAYERED |
-            WS_EX_TRANSPARENT,
+        HWND hwnd = ::CreateWindowExA(
+            WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_LAYERED | WS_EX_TRANSPARENT,
             className,
             "",
             WS_POPUP,
-            -32000, -32000,
-            1, 1,
-            nullptr, nullptr,
-            wc.hInstance,
-            nullptr
-        );
+            -32000, -32000, 1, 1,
+            nullptr, nullptr, wc.hInstance, nullptr);
 
         if (hwnd)
         {
-            SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);
-            ShowWindow(hwnd, SW_HIDE);
+            ::SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);
+            ::ShowWindow(hwnd, SW_HIDE);
         }
 
         return hwnd;
@@ -372,14 +364,16 @@ bool RenderManager::IsGameDeviceCandidate(const D3DPRESENT_PARAMETERS* pp, HWND 
     if (!game_hwnd_)
         return true;
 
+    DWORD wpid = 0;
+    ::GetWindowThreadProcessId(game_hwnd_, &wpid);
+    if (wpid != ::GetCurrentProcessId())
+        return true;
+
     if (presentHwnd && presentHwnd == game_hwnd_)
         return true;
 
-    if (pp)
-    {
-        if (pp->hDeviceWindow && pp->hDeviceWindow == game_hwnd_)
-            return true;
-    }
+    if (pp && pp->hDeviceWindow && pp->hDeviceWindow == game_hwnd_)
+        return true;
 
     return false;
 }
@@ -498,12 +492,6 @@ void RenderManager::EnsureDeviceHooksInstalled(IDirect3DDevice9* device) noexcep
     {
         return;
     }
-
-    // Uninstall old hooks (if any)
-    // hooks_->Uninstall(hookNameReset);
-    // hooks_->Uninstall(hookNameBeginScene);
-    // hooks_->Uninstall(hookNameEndScene);
-    // hooks_->Uninstall(hookNamePresent);
 
     device_hooks_installed_ = false;
 

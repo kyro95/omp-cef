@@ -89,23 +89,59 @@ bool Runtime::Start()
     });
     
     RenderManager::Instance().SetHookManager(hooks_.get());
-    RenderManager::Instance().SetGameWindow(gta_->GetHwnd());
+    //RenderManager::Instance().SetGameWindow(gta_->GetHwnd());
     
     if (!RenderManager::Instance().Initialize()) {
         LOG_FATAL("RenderManager init failed.");
         return true;
     }
 
-	RenderManager::Instance().OnPresent = [this]()
-	{
-		if (gta_)
-			gta_->PumpMainThreadCallbacks();
-		if (!RenderManager::Instance().GetDevice())
-			RenderManager::Instance().PollD3D();
+    RenderManager::Instance().OnPresent = [this]()
+    {
+        if (gta_)
+            gta_->PumpMainThreadCallbacks();
 
-		if (app_)
-			app_->Tick();
-	};
+        int frames = cursor_recenter_frames_.load(std::memory_order_acquire);
+        if (frames > 0)
+        {
+            cursor_recenter_frames_.store(frames - 1, std::memory_order_release);
+
+            if (frames == 1)
+            {
+                HWND hwnd = gta_ ? gta_->GetHwnd() : nullptr;
+                if (hwnd && ::IsWindow(hwnd) && ::GetForegroundWindow() == hwnd)
+                {
+                    RECT rect{};
+                    if (::GetClientRect(hwnd, &rect))
+                    {
+                        POINT center{
+                            rect.left + (rect.right  - rect.left) / 2,
+                            rect.top + (rect.bottom - rect.top) / 2
+                        };
+
+                        ::ClientToScreen(hwnd, &center);
+                        ::SetCursorPos(center.x, center.y);
+
+                        RECT clip { 
+                            center.x - 1, 
+                            center.y - 1, 
+                            center.x + 1, 
+                            center.y + 1 
+                        };
+
+                        ::ClipCursor(&clip);
+                        ::ClipCursor(nullptr);
+                    }
+                }
+            }
+        }
+
+        if (!RenderManager::Instance().GetDevice())
+            RenderManager::Instance().PollD3D();
+
+        if (app_)
+            app_->Tick();
+    };
 
 	// SA:MP version
 	samp_version_ = std::make_unique<SampVersionManager>();
@@ -154,7 +190,7 @@ bool Runtime::Start()
 			netgame_hook_->SetSessionActive(active);
 	});
 
-	chat_hook_ = std::make_unique<ChatHook>(*hooks_, *focus_);
+	chat_hook_ = std::make_unique<ChatHook>(*hooks_, *focus_, *browser_, *network_);
 	chat_hook_->Initialize();
 
 	download_dialog_ = std::make_unique<DownloadDialog>(network_.get(), hud_.get(), samp_.get(), browser_.get());
@@ -195,20 +231,53 @@ void Runtime::FinalizeInitialization(HWND hwnd)
             return;
         }
 
-        wndproc_->OnMessage = [this](HWND h, UINT msg, WPARAM wParam, LPARAM lParam) -> LRESULT
+        wndproc_->OnMessage = [this](HWND h, UINT msg, WPARAM wParam, LPARAM lParam) -> std::optional<LRESULT>
         {
             if (browser_ && browser_->OnWndProcMessage(h, msg, wParam, lParam))
-                return TRUE;
+                return { TRUE };
 
             if (msg == WM_ACTIVATE)
             {
                 const bool active = (LOWORD(wParam) != WA_INACTIVE);
+
                 if (browser_)
                     browser_->SetDrawEnabled(active);
-                return 0;
+
+                if (active)
+                {
+                    CursorHook::Instance().OnGameActivated();
+
+                    cursor_recenter_frames_.store(5, std::memory_order_release);
+                }
+                else
+                {
+                    cursor_recenter_frames_.store(0, std::memory_order_release);
+                    ::ClipCursor(nullptr);
+                }
+
+                return std::nullopt;
             }
 
-            return FALSE;
+            if (msg == WM_ACTIVATEAPP)
+            {
+                if (!wParam)
+                    ::ClipCursor(nullptr);
+
+                return std::nullopt;
+            }
+
+            if (msg == WM_SETCURSOR)
+            {
+                if (browser_ && browser_->IsAnyBrowserFocused())
+                {
+                    ::SetCursor(::LoadCursor(nullptr, IDC_ARROW));
+                    return { TRUE };
+                }
+
+                return std::nullopt;
+            }
+
+            return std::nullopt;
         };
 
         LOG_INFO("[Runtime] WndProc hook installed successfully.");

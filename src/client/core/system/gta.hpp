@@ -39,6 +39,14 @@ private:
 
     void PostToMainThread(std::function<void()> fn);
 
+    struct SearchData { DWORD pid; HWND result; };
+
+    static bool BelongsToCurrentProcess(HWND hwnd, DWORD pid) noexcept
+    {
+        DWORD wpid = 0;
+        ::GetWindowThreadProcessId(hwnd, &wpid);
+        return wpid == pid;
+    }
 private:
     static constexpr uintptr_t HwndAddress = 0xC97C1C;
 

@@ -75,4 +75,6 @@ private:
 	std::unique_ptr<ChatHook> chat_hook_;
 
 	std::unique_ptr<App> app_;
+	
+	std::atomic<int> cursor_recenter_frames_{ 0 };
 };

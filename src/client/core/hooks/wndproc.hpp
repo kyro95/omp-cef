@@ -20,8 +20,7 @@ public:
         return hwnd_ && ::IsWindow(hwnd_); 
     }
 
-    std::function<LRESULT(HWND, UINT, WPARAM, LPARAM)> OnMessage;
-
+    std::function<std::optional<LRESULT>(HWND, UINT, WPARAM, LPARAM)> OnMessage;
 private:
     static LRESULT CALLBACK StaticWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
