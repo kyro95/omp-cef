@@ -165,6 +165,23 @@ bool BrowserClient::OnProcessMessageReceived(CefRefPtr<CefBrowser> /*browser*/,
             return true;
         }
 
+        // Client-only game data polling (avoid spamming the server for HUD-like stats)
+        // JS: cef.emit('game:data:pollPlayerStats', enabled, intervalMs)
+        if (event_name == "game:data:pollPlayerStats")
+        {
+            bool enabled = true;
+            int intervalMs = 50;
+
+            if (args->GetSize() > 1 && args->GetType(1) == VTYPE_BOOL)
+                enabled = args->GetBool(1);
+
+            if (args->GetSize() > 2 && args->GetType(2) == VTYPE_INT)
+                intervalMs = args->GetInt(2);
+
+            manager_.SetPlayerStatsPolling(browserId_, enabled, intervalMs);
+            return true;
+        }
+
         ClientEmitEventPacket event_packet;
         event_packet.browserId = browserId_;
         event_packet.name = event_name;

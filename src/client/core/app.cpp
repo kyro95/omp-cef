@@ -212,6 +212,7 @@ void App::Tick()
     FlushPendingIfReady();
 
     focus_.Update();
+    browser_.TickGameData();
     browser_.RenderAll();
     
     if (pending_clear_chat_)

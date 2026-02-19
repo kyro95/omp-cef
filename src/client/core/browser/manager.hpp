@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include "client.hpp"
+#include "player_stats.hpp"
 #include "include/base/cef_callback.h"
 #include "include/cef_app.h"
 #include "include/cef_browser.h"
@@ -86,9 +87,13 @@ struct PendingPaint
     uint64_t tick = 0;
 };
 
+
 class BrowserManager
 {
 public:
+    using PlayerStatsSnapshot = PlayerStats::Snapshot;
+    using PlayerStatsPollState = PlayerStats::PollState;
+
     BrowserManager(AudioManager& audio, Gta& gta, ResourceManager& resource_manager, NetworkManager& network) : audio_(audio), gta_(gta), resource_manager_(resource_manager), network_(network) {}
     ~BrowserManager()
     {
@@ -135,7 +140,9 @@ public:
     void SetKeyCaptureEnabled(bool enabled);
     void EnableKey(int key, bool enabled);
 
-    //
+    void SetPlayerStatsPolling(int browserId, bool enabled, int intervalMs);
+    void TickGameData();
+
     void ExitGame();
 
     // Callbacks from BrowserClient
@@ -208,4 +215,6 @@ private:
     // Keyboard capture / filtering (client -> server)
     bool key_capture_enabled_ = false;
     std::bitset<256> key_allowed_{};
+
+    std::unordered_map<int, PlayerStatsPollState> player_stats_poll_;
 };

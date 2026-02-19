@@ -20,7 +20,9 @@
 #include "system/gta.hpp"
 #include "samp/components/netgame.hpp"
 #include "game_sa/CSprite.h"
+#include "game_sa/CCamera.h"
 #include "shared/events.hpp"
+#include "utf8.hpp"
 
 static void ConfigureBrowserSettings(CefBrowserSettings& settings)
 {
@@ -1396,4 +1398,171 @@ LRESULT BrowserManager::OnWndProcMessage(HWND hwnd, UINT msg, WPARAM wParam, LPA
     }
 
     return false;
+}
+
+void BrowserManager::SetPlayerStatsPolling(int browserId, bool enabled, int intervalMs)
+{
+    if (intervalMs <= 0)
+        intervalMs = 50;
+
+    auto& state = player_stats_poll_[browserId];
+    state.enabled = enabled;
+    state.intervalMs = static_cast<uint32_t>(intervalMs);
+    state.nextTickMs = 0;
+    state.lastEmitMs = 0;
+    state.hasLast = false;
+
+    LOG_DEBUG("[CEF] Browser {} playerStats polling {} ({}ms).", browserId, enabled ? "enabled" : "disabled", intervalMs);
+}
+
+void BrowserManager::TickGameData()
+{
+    if (!initialized_ || player_stats_poll_.empty())
+        return;
+
+    const uint64_t now = ::GetTickCount64();
+
+    PlayerStatsSnapshot current{};
+    bool havePlayer = false;
+
+    CPlayerPed* ped = FindPlayerPed(-1);
+    if (!ped)
+        return;
+
+    // Only proceed when ped is fully constructed (RwObject present).
+    if (!ped->m_pRwObject)
+        return;
+
+    havePlayer = true;
+
+    current.hp = static_cast<int>(ped->m_fHealth);
+    current.max_hp = static_cast<int>(ped->m_fMaxHealth);
+    current.arm = static_cast<int>(ped->m_fArmour);
+
+    if (ped->m_pPlayerData)
+        current.breath = static_cast<int>(ped->m_pPlayerData->m_fBreath);
+
+    current.wanted = ped->GetWantedLevel();
+
+    // Weapon + ammo
+    const int slot = static_cast<int>(ped->m_nActiveWeaponSlot);
+    if (slot >= 0 && slot < 13)
+    {
+        const CWeapon& w = ped->m_aWeapons[slot];
+        current.weapon = static_cast<int>(w.m_nType);
+        current.ammo = static_cast<int>(w.m_nAmmoInClip);
+        current.max_ammo = static_cast<int>(w.m_nTotalAmmo);
+    }
+
+    // Money
+    if (CPlayerInfo* pi = ped->GetPlayerInfoForThisPlayerPed())
+        current.money = pi->m_nMoney;
+
+    // Position
+    {
+        const CVector& p = ped->GetPosition();
+        current.x = p.x;
+        current.y = p.y;
+        current.z = p.z;
+    }
+
+    // In vehicle + vehicle info
+    CVehicle* veh = ped->m_pVehicle;
+    current.in_vehicle = (veh != nullptr);
+    if (veh)
+    {
+        current.vehicle_health = veh->m_fHealth;
+        current.vehicle_model = static_cast<int>(veh->m_nModelIndex);
+    }
+    else
+    {
+        current.vehicle_health = 0.f;
+        current.vehicle_model = 0;
+    }
+
+    // Speed
+    {
+        const CVector& v = (veh ? veh->m_vecMoveSpeed : ped->m_vecMoveSpeed);
+        current.speed = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z) * 100.0f;
+    }
+
+    auto NormalizeDeg = [](float deg) -> float {
+        while (deg < 0.f) deg += 360.f;
+        while (deg >= 360.f) deg -= 360.f;
+        return deg;
+    };
+
+    // Player heading
+    {
+        float rad = ped->m_fCurrentRotation;
+        
+        // current.heading = rad * (180.0f / 3.14159265f);
+        float deg = rad * (180.0f / 3.14159265f);
+        current.heading = NormalizeDeg(-deg); 
+
+        if (current.heading < 0.f) current.heading += 360.f;
+        if (current.heading >= 360.f) current.heading = std::fmod(current.heading, 360.f);
+    }
+
+    // Camera heading (deg)
+    {
+        const CVector& fwd = TheCamera.m_mCameraMatrix.at;
+
+        float camRad = std::atan2(fwd.x, fwd.y);
+        float camDeg = camRad * (180.0f / 3.14159265f);
+
+        current.camera_heading = NormalizeDeg(camDeg);
+    }
+
+    // Aiming
+    {
+        bool aiming = false;
+
+        if (CPad* pad = ped->GetPadFromPlayer())
+            aiming = pad->GetTarget();
+        else if (CPad* pad = CPad::GetPad(0))
+            aiming = pad->GetTarget();
+
+        current.aiming = aiming;
+    }
+
+    // Emit
+    for (auto it = player_stats_poll_.begin(); it != player_stats_poll_.end(); )
+    {
+        const int browserId = it->first;
+        auto& st = it->second;
+
+        auto* inst = GetBrowserInstance(browserId);
+        if (!inst)
+        {
+            it = player_stats_poll_.erase(it);
+            continue;
+        }
+
+        if (!st.enabled || !havePlayer)
+        {
+            ++it;
+            continue;
+        }
+
+        if (st.nextTickMs == 0 || now >= st.nextTickMs)
+        {
+            st.nextTickMs = now + st.intervalMs;
+
+            const bool changed = !st.hasLast || !PlayerStats::Equal(st.last, current);
+            const bool force = (st.lastEmitMs == 0) || (now - st.lastEmitMs) >= 1000ULL;
+
+            if (changed || force)
+            {
+                const std::string json = PlayerStats::ToJson(current);
+                PlayerStats::EmitJson(inst, "game:data:playerStats", json);
+
+                st.lastEmitMs = now;
+                st.last = current;
+                st.hasLast = true;
+            }
+        }
+
+        ++it;
+    }
 }
