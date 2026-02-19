@@ -145,12 +145,17 @@ jobs:
 
           dpkg --add-architecture i386 || true
           apt-get update
+
           apt-get install -y --no-install-recommends \
             ca-certificates git \
             build-essential cmake ninja-build pkg-config \
             curl zip unzip tar python3 \
+            binutils \
+            patch \
             gcc-multilib g++-multilib linux-libc-dev:i386 \
-            binutils
+            autoconf automake libtool m4 gettext
+
+          rm -rf /var/lib/apt/lists/*
 
           echo "glibc version in container:"
           ldd --version 2>&1 | sed -n '1p'
