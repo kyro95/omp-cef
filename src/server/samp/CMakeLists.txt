@@ -23,7 +23,7 @@ add_library(${PROJECT_NAME}
 
 add_win_version_resource(
     ${PROJECT_NAME}
-        VERSION "1.1.0.0"
+        VERSION "1.2.0.0"
         COMPANY "aurora-mp"
         PRODUCT_NAME "SA-MP Server Plugin"
         FILE_DESC "CEF Plugin for SA-MP"
