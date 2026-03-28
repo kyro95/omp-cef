@@ -42,6 +42,8 @@ public:
 	void Stop();
 
 private:
+	void UpdateBrowserDrawState();
+
 	Runtime() = default;
 	Runtime(const Runtime&) = delete;
 	Runtime& operator=(const Runtime&) = delete;

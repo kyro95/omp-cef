@@ -12,6 +12,7 @@
 #include "hooks/wndproc.hpp"
 #include "network/network_manager.hpp"
 #include "rendering/render_manager.hpp"
+#include "game_sa/CMenuManager.h"
 #include "samp/addresses.hpp"
 #include "samp/samp.hpp"
 #include "samp/samp_version_manager.hpp"
@@ -30,13 +31,24 @@ std::unique_ptr<Runtime> Runtime::CreateDefault()
 
 	runtime->logger_ = std::make_unique<Logger>();
 	logging::SetLogger(runtime->logger_.get());
-
 	runtime->config_ = std::make_unique<ConfigManager>();
 	runtime->gta_ = std::make_unique<Gta>();
 	runtime->hud_ = std::make_unique<HudManager>();
 	runtime->audio_ = std::make_unique<AudioManager>();
 
 	return runtime;
+}
+
+void Runtime::UpdateBrowserDrawState()
+{
+    if (!browser_)
+        return;
+
+    const HWND hwnd = gta_ ? gta_->GetHwnd() : nullptr;
+    const bool window_active = hwnd && ::IsWindow(hwnd) && (::GetForegroundWindow() == hwnd);
+    const bool pause_menu_open = FrontEndMenuManager.m_bMenuActive && FrontEndMenuManager.m_nCurrentMenuPage == MENUPAGE_PAUSE_MENU;
+
+    browser_->SetDrawEnabled(window_active && !pause_menu_open);
 }
 
 bool Runtime::Start()
@@ -100,6 +112,8 @@ bool Runtime::Start()
     {
         if (gta_)
             gta_->PumpMainThreadCallbacks();
+
+		UpdateBrowserDrawState();
 
         int frames = cursor_recenter_frames_.load(std::memory_order_acquire);
         if (frames > 0)
@@ -240,8 +254,7 @@ void Runtime::FinalizeInitialization(HWND hwnd)
             {
                 const bool active = (LOWORD(wParam) != WA_INACTIVE);
 
-                if (browser_)
-                    browser_->SetDrawEnabled(active);
+                UpdateBrowserDrawState();
 
                 if (active)
                 {
